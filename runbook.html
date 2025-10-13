@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Freshservice Semantic Search — Runbook (2025)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    --fg:#111;--bg:#fff;--muted:#666;--code:#0b3d91;--chip:#f6a700;--border:#e6e6e6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--fg:#eee;--bg:#111;--muted:#aaa;--code:#9ec1ff;--chip:#f6a700;--border:#333;}
+  }
+  html,body{background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;}
+  main{max-width:980px;margin:40px auto;padding:0 20px;}
+  h1{font-size:2rem;margin:0 0 0.25rem}
+  h2{margin:2.0rem 0 0.5rem;font-size:1.35rem}
+  h3{margin:1.5rem 0 0.5rem;font-size:1.1rem}
+  p{margin:0.6rem 0}
+  code,kbd,pre{font:90% ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  pre{background:rgba(127,127,127,.08);border:1px solid var(--border);padding:12px;border-radius:8px;overflow:auto}
+  .muted{color:var(--muted)}
+  .chip{display:inline-block;background:var(--chip);color:#111;padding:.1em .5em;border-radius:999px;font-weight:700}
+  .box{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:14px 0}
+  .grid{display:grid;gap:10px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .kpi{font-size:2rem;font-weight:700}
+  ul{margin:0.25rem 0 0.75rem 1.25rem}
+  .small{font-size:.95rem}
+  .mono{color:var(--code)}
+  hr{border:0;border-top:1px solid var(--border);margin:26px 0}
+  table{border-collapse:collapse;width:100%;font-size:.95rem}
+  th,td{border:1px solid var(--border);padding:.5rem .6rem;text-align:left;vertical-align:top}
+  @media print{a{color:inherit;text-decoration:none}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Freshservice Semantic Search — Runbook (2025)</h1>
+  <p class="muted">Minimal, reliable guide for setup, ingest, search (CLI + UI), and troubleshooting.</p>
+</header>
+
+<section>
+  <h2>0) Project layout</h2>
+  <pre><code>FreshService/
+├─ api.env                        # secrets &amp; knobs (see §2)
+├─ requirements.txt              # pinned, reproducible installs
+├─ config.py                      # loads env, Chroma/OpenAI/FS clients
+├─ freshservice.py                # ingest CLOSED incidents → Chroma
+├─ search_tickets.py              # search helpers + CLI
+├─ app.py                         # Streamlit UI
+├─ extract_error_messages.py      # vision: screenshot → error text
+├─ validate_env.py                # env &amp; connectivity checks
+└─ chroma_db/                     # created on first ingest
+</code></pre>
+</section>
+
+<section>
+  <h2>1) First-time setup</h2>
+  <pre><code>cd FreshService
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+</code></pre>
+  <p>Quick import compile check (no network):</p>
+  <pre><code>python -m compileall .</code></pre>
+</section>
+
+<section>
+  <h2>2) Configure <code>api.env</code> (create/edit)</h2>
+  <pre><code># --- Freshservice ---
+FRESHSERVICE_DOMAIN=your_subdomain
+FRESHSERVICE_API_KEY=your_api_key
+REQUEST_TIMEOUT_SECONDS=30
+RATE_LIMIT_SLEEP_SECONDS=60
+
+# --- OpenAI (embeddings + vision extractor) ---
+OPENAI_API_KEY=sk-****************
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# --- Chroma (vector DB) ---
+CHROMA_DB_PATH=/absolute/path/to/chroma_db
+CHROMA_COLLECTION_NAME=FreshService_core_v2
+
+# --- Ingest/Search knobs ---
+INGEST_STATUS_CODE=5
+INGEST_MAX_TOKENS=3000
+INCLUDE_CONVERSATIONS_IN_EMBED=0
+SEARCH_MAX_DISTANCE=0.55
+SEARCH_MAX_DISPLAY=10
+</code></pre>
+  <ul>
+    <li><strong>UI fetch cutoff is fixed at ≤ <span class="chip">1.30</span></strong> to pull a broad set, then results are bucketed by rank.</li>
+    <li><strong>CLI</strong> uses <code>SEARCH_MAX_DISTANCE</code> directly.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3) Validate environment</h2>
+  <pre><code># Dry checks only:
+python validate_env.py
+
+# Also ping Freshservice:
+python validate_env.py --live-fs
+
+# Also check Chroma path/access:
+python validate_env.py --check-chroma
+</code></pre>
+  <p>Expect required envs, a (non-fatal) warning if UI cutoff 1.30 ≠ env cutoff, and 200/404 on live FS ping.</p>
+</section>
+
+<section>
+  <h2>4) Ingest (build/refresh the index)</h2>
+  <pre><code>source .venv/bin/activate
+python freshservice.py
+</code></pre>
+  <ul>
+    <li><strong>Status</strong>: <code>INGEST_STATUS_CODE</code> (default 5 = Closed)</li>
+    <li><strong>Type</strong>: incidents only</li>
+    <li><strong>Embedded text</strong>: <code>subject + clean_description(description)</code></li>
+    <li><strong>Conversations</strong>: kept in metadata (not embedded) unless <code>INCLUDE_CONVERSATIONS_IN_EMBED=1</code></li>
+    <li><strong>Metadata</strong>: sanitized to primitives only (no None/lists/dicts)</li>
+  </ul>
+  <p><strong>Tip:</strong> If you change embed policy, set a new <code>CHROMA_COLLECTION_NAME</code> first.</p>
+</section>
+
+<section>
+  <h2>5) Search — CLI (quick checks)</h2>
+  <pre><code># Free text
+python search_tickets.py "revit crash add location"
+
+# Seed from a ticket (subject + cleaned description from API)
+python search_tickets.py --seed-ticket 4295 --max-distance 0.55
+
+# Open the Nth result in your browser
+python search_tickets.py --seed-ticket 4295 --open 1
+</code></pre>
+</section>
+
+<section>
+  <h2>6) Search — Streamlit UI (for triage)</h2>
+  <pre><code>streamlit run app.py
+</code></pre>
+  <ul>
+    <li>Enter free text or a ticket ID (4–6 digits, optional “#”).</li>
+    <li>Ticket-ID seeding fetches <em>subject + description_text</em>, applies the same cleaner, then searches.</li>
+    <li>UI retrieves ≤ <span class="chip">1.30</span>, sorts by distance, then buckets by rank:
+      <ul>
+        <li><strong>Most Similar</strong> (top 20% by rank, up to <code>SEARCH_MAX_DISPLAY</code>)</li>
+        <li>Similar (21–50%), Related (51–80%), Loose (81–100%) — collapsed by default</li>
+      </ul>
+    </li>
+    <li>Cards: subject, link, agent/group, category path, distance chip; description in an expander.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>7) Error text extractor (screenshots → exact error lines)</h2>
+  <pre><code>python extract_error_messages.py --ticket-id 5893 --debug
+# Save normalized images for QA
+python extract_error_messages.py --ticket-id 5893 --save ./_imgs --debug
+</code></pre>
+  <p>Extracts <em>only on-screen error text</em> (or <code>NO_ERROR_TEXT</code>), handling ticket attachments, conversation attachments, and inline <code>&lt;img&gt;</code> (<code>data:</code>, <code>cid:</code>).</p>
+</section>
+
+<section>
+  <h2>8) Rebuilding / switching indexes</h2>
+  <ul>
+    <li><strong>New policy</strong>: set a new <code>CHROMA_COLLECTION_NAME</code>, re-ingest.</li>
+    <li><strong>Nuke &amp; rebuild</strong>: stop app, delete/move <code>chroma_db/</code>, re-ingest.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>9) Troubleshooting</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Try</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Zero/few CLI results</td>
+        <td>Raise <code>SEARCH_MAX_DISTANCE</code> to 0.60–0.80; confirm <code>CHROMA_COLLECTION_NAME</code>.</td>
+      </tr>
+      <tr>
+        <td>UI misses expected tickets</td>
+        <td>UI buckets by rank; expand Similar/Related/Loose.</td>
+      </tr>
+      <tr>
+        <td>Agent shows Unknown</td>
+        <td>Ensure API key has Agents:Read; resolver uses <code>/agents/{id}</code> with caching.</td>
+      </tr>
+      <tr>
+        <td>Large metadata</td>
+        <td>Conversations are metadata-only; truncate if needed in <code>freshservice.py</code>.</td>
+      </tr>
+      <tr>
+        <td>Chroma path/perm errors</td>
+        <td>Use absolute <code>CHROMA_DB_PATH</code>; ensure process can create folder.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>10) Sanity test sequence</h2>
+  <pre><code>python validate_env.py
+python validate_env.py --live-fs --check-chroma
+python freshservice.py
+python search_tickets.py --seed-ticket 4295 --max-distance 0.55 --open
+streamlit run app.py
+python extract_error_messages.py --ticket-id 5893 --debug
+</code></pre>
+</section>
+
+<section>
+  <h2>11) Maintenance &amp; ops tips</h2>
+  <ul>
+    <li><strong>Pinned versions</strong> in <code>requirements.txt</code> → reproducible installs.</li>
+    <li><strong>Backups</strong>: <code>chroma_db/</code> is your live index; back up before policy changes/upgrades.</li>
+    <li><strong>Key rotation</strong>: rotate leaked keys, update <code>api.env</code>, restart.</li>
+  </ul>
+</section>
+
+<footer class="muted small">
+  <hr />
+  <p>© 2025 Freshservice Semantic Search Runbook. UI fetch cutoff ≤ 1.30; CLI obeys SEARCH_MAX_DISTANCE.</p>
+</footer>
+</main>
+</body>
+</html>

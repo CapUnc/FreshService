@@ -1,0 +1,29 @@
+# =========================
+# File: requirements.txt
+# Freshservice Semantic Search - Production Dependencies
+# =========================
+
+# Core HTTP & environment
+requests==2.32.3
+python-dotenv==1.0.1
+
+# HTML parsing for text cleaning
+beautifulsoup4==4.12.3
+
+# Image processing for vision helper
+pillow==10.4.0
+
+# Vector database (PINNED for compatibility)
+chromadb==0.4.22
+
+# OpenAI SDK (PINNED for compatibility)
+openai==0.28.1
+
+# Web UI
+streamlit==1.37.0
+
+# Additional dependencies for ChromaDB (compatible versions)
+numpy>=1.22.5,<2.0
+pydantic>=1.9
+fastapi>=0.95.2
+uvicorn>=0.18.3
