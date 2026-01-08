@@ -11,7 +11,7 @@ A powerful semantic search tool for Freshservice tickets that enables IT help de
 - **Clean Data**: Automated text cleaning removes signatures and reply chains
 - **Rich Metadata**: Full categorization, agent attribution, and ticket details
 - **Web UI**: Streamlit-based interface with debug mode and AI toggles
-- **On-Demand AI Guidance**: One-click OpenAI recommendations for next steps, categories, and assignment groups
+- **✨ On-Demand AI Guidance**: Intelligent recommendations analyzing all notes from similar tickets, suggesting questions, referencing external knowledge bases, and providing context-aware solutions
 - **CLI Interface**: Command-line tool for power users
 - **Vision Helper**: Extract error messages from screenshots using OpenAI Vision
 - **🔧 Error Handling**: Comprehensive diagnostics and troubleshooting tools
@@ -174,7 +174,14 @@ Access at: http://localhost:8501
 - **Distance Threshold**: Adjustable similarity cutoff (default: 0.9)
 - **Result Filtering**: Bucket results by similarity (Most Similar, Similar, Related, Loose)
 - **Strict Filters**: Optional toggles to require exact software term matches or limit to the seeded ticket's category
-- **AI Guidance Button**: Generate next steps, category, and assignment group recommendations on demand
+- **✨ AI Guidance Button**: Intelligent recommendations based on similar tickets and external sources:
+  - Analyzes ALL notes from similar tickets (private and public)
+  - Provides actionable next steps tailored to current ticket context
+  - Suggests questions to ask when information is missing
+  - References external knowledge bases (Microsoft KB, vendor docs) with links when applicable
+  - Recognizes solution variance - explains why similar tickets may have different solutions
+  - Flags missing context that could lead to incorrect solutions
+  - Concise, scannable format optimized for busy technicians
 - **Metadata Display**: Full ticket details, agent info, category paths
 - **Description Views**: Toggle between cleaned and original descriptions
 - **🔧 Debug Mode**: Comprehensive system diagnostics and error information

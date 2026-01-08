@@ -66,6 +66,40 @@ python search_tickets.py --seed-ticket 5160
 python search_tickets.py --seed-ticket 6427
 ```
 
+## ✨ AI Guidance
+
+### Generate Guidance Button
+The **✨ Generate Guidance** button in the Streamlit app provides intelligent recommendations:
+
+**What it analyzes:**
+- ALL notes from similar tickets (private agent notes + public conversations)
+- Current ticket context and detected software/products
+- External knowledge bases when applicable (Microsoft KB, vendor docs)
+
+**What you get:**
+- Actionable next steps tailored to current ticket
+- Questions to ask when information is missing
+- Recommended category path and assignment group
+- External resource links when relevant
+- Solution variance explanations (why similar tickets may differ)
+
+**Key features:**
+- Handles incomplete documentation gracefully
+- Compares current ticket context with similar tickets
+- Flags missing information that could cause issues
+- Can acknowledge when no helpful info is found (doesn't guess)
+- Concise, scannable format for busy technicians
+
+**Usage:**
+1. Search for similar tickets (seed ticket or free text)
+2. Click **✨ Generate Guidance** button
+3. Review recommendations and supporting ticket citations
+4. Generate again after gathering more information or adjusting filters
+
+**Configuration:**
+- Model: `OPENAI_GUIDANCE_MODEL` (default: `gpt-4o-mini`)
+- Enable prompt logging: `LOG_GUIDANCE_PROMPT=1` for debugging
+
 ## 📊 Current Database Stats
 
 - **Total Tickets**: 3,947 closed incidents (after 2025-10-29 ingestion)

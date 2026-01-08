@@ -89,6 +89,120 @@ AI summarization is enabled by default and can be controlled via:
 - Streamlit: "🤖 AI-enhanced search" checkbox
 - Environment: Automatic fallback if OpenAI API fails
 
+## AI Guidance API
+
+The AI Guidance feature provides intelligent recommendations for ticket handling by analyzing similar historical tickets and external knowledge sources.
+
+### AI Guidance Module (`ai_recommendations.py`)
+
+#### Core Function
+- `generate_guidance(current_ticket, similar_contexts, categories_tree, detected_tokens, model, temperature)`: Generates AI-powered guidance for ticket resolution
+
+#### Key Features
+
+**Comprehensive Note Analysis:**
+- Analyzes **ALL notes** from similar tickets (both private agent notes and public conversations)
+- Prioritizes private notes that typically contain resolution details
+- Handles tickets with incomplete or missing documentation gracefully
+- Works effectively even when agents haven't documented perfectly
+
+**External Knowledge Integration:**
+- References external knowledge bases when applicable (Microsoft Knowledge Base, vendor documentation)
+- Prioritizes company-specific knowledge bases for company-specific issues
+- Includes links to external sources when available
+- Only references external sources when relevant to the issue
+- Can acknowledge when no helpful information is found (doesn't guess)
+
+**Solution Variance Intelligence:**
+- Recognizes that similar tickets may have different solutions
+- Explains why solutions differ (environment, user skill, unique circumstances)
+- Can reference multiple approaches: "Ticket X used solution A, Ticket Y used solution B"
+- Identifies the most similar ticket when solutions conflict
+- Considers current ticket context when comparing to similar tickets
+
+**Information Gathering:**
+- Suggests questions to ask based on missing information
+- Compares commonly documented information in similar tickets vs. current ticket
+- Accounts for information available via GoTo Resolve (doesn't ask for computer name, RAM, etc.)
+- Flags missing context that could lead to incorrect solutions
+- Questions focus on information needed to solve the issue
+
+**Output Format:**
+- Concise, structured, and scannable for busy technicians
+- Avoids unnecessary fluff or lengthy explanations
+- Organized for quick action-taking
+- Markdown formatted for readability
+
+#### Return Format
+```python
+@dataclass
+class AIGuidance:
+    agent_markdown: str              # Formatted guidance for the agent
+    recommended_category: List[str]  # Recommended category path
+    recommended_group: str           # Suggested assignment group
+    confidence: str                  # Confidence level (low/medium/high)
+    supporting_tickets: List[dict]   # List of supporting ticket IDs with rationale
+```
+
+#### Example Usage
+```python
+from ai_recommendations import generate_guidance, AIGuidance
+from search_context import gather_ticket_contexts, load_category_tree
+
+# Gather contexts from similar tickets
+similar_contexts = gather_ticket_contexts(search_results, limit=5)
+
+# Load category taxonomy
+categories_tree = load_category_tree()
+
+# Current ticket details
+current_ticket = {
+    "subject": "Teams video call not working",
+    "description": "User reports Teams calls fail immediately...",
+    "ticket_id": 6511
+}
+
+# Generate guidance
+guidance = generate_guidance(
+    current_ticket=current_ticket,
+    similar_contexts=similar_contexts,
+    categories_tree=categories_tree,
+    detected_tokens=["Teams", "video", "call"],
+    model="gpt-4o-mini",
+    temperature=0.2
+)
+
+# Access guidance components
+print(guidance.agent_markdown)           # Agent instructions
+print(guidance.recommended_category)     # ['Microsoft Office 365', 'Teams']
+print(guidance.recommended_group)        # 'Desktop Services'
+print(guidance.confidence)               # 'high'
+print(guidance.supporting_tickets)       # [{'ticket_id': 4295, 'rationale': '...'}]
+```
+
+#### Prompt Engineering
+
+The guidance generation uses sophisticated prompts in `improved_ai_prompt.py`:
+
+- `create_guidance_system_message()`: Defines the AI's role as an experienced IT service desk agent
+- `create_ai_guidance_prompt_with_sources()`: Constructs the user prompt with:
+  - Current ticket details
+  - Similar tickets with ALL their notes
+  - Category taxonomy
+  - Detected tokens (software/products)
+  - Assignment groups
+
+#### Configuration
+- **Model**: Controlled by `OPENAI_GUIDANCE_MODEL` (default: `gpt-4o-mini`)
+- **Temperature**: Default 0.2 for consistent, focused responses
+- **Prompt Logging**: Set `LOG_GUIDANCE_PROMPT=1` to log full prompts for debugging
+
+#### Error Handling
+- Gracefully handles missing API keys
+- Falls back to raw text if JSON parsing fails
+- Logs errors without crashing the application
+- Returns partial guidance when some processing fails
+
 ## Search API
 
 ### CLI Search Interface

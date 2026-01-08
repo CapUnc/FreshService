@@ -70,11 +70,66 @@ When these filters eliminate all results, relax them to broaden the search again
 
 ## AI Guidance
 
-- Click **✨ Generate AI Guidance** above the results list to ask OpenAI for recommended next steps. The model reviews the most similar historical tickets (including work notes) and suggests:
-  - Agent-ready response/troubleshooting instructions
-  - Recommended category path
-  - Suggested assignment group and confidence level
-- Results appear below the button with supporting ticket references. Click again to refresh or adjust filters before regenerating.
+The **✨ Generate AI Guidance** button provides intelligent, actionable recommendations for handling tickets based on similar historical cases and external knowledge sources.
+
+### How It Works
+
+1. **Analysis Process**: The AI analyzes:
+   - **All notes** from similar tickets (both private agent notes and public conversations)
+   - The current ticket's full context (subject, description, detected software/products)
+   - Patterns and solutions from historical similar tickets
+   - External knowledge bases when applicable (Microsoft Knowledge Base, vendor documentation, etc.)
+
+2. **Intelligent Recommendations**: The AI provides:
+   - **Actionable next steps** tailored to the current ticket's specific context
+   - **Questions to ask** when important information is missing (based on what's commonly documented in similar tickets)
+   - **Recommended category path** for proper ticket classification
+   - **Suggested assignment group** with confidence level
+   - **External resources** with links when relevant (prioritizes company-specific knowledge bases when available)
+
+3. **Solution Variance Understanding**: The AI recognizes that:
+   - Similar tickets may have different solutions (different environments, user skill levels, unique circumstances)
+   - Not all similar tickets require identical solutions
+   - Context differences between tickets matter
+   - It can reference multiple approaches: "One ticket used X solution, another used Y solution"
+
+4. **Information Handling**:
+   - **Missing Information**: Suggests questions to gather needed details that are commonly documented in similar tickets
+   - **Available Information**: Accounts for information accessible via GoTo Resolve (computer name, RAM, etc.) and doesn't ask for what can be retrieved automatically
+   - **Gaps and Risks**: Flags missing context that could lead to incorrect solutions
+   - **Incomplete Documentation**: Works effectively even when similar tickets have minimal or imperfect documentation
+
+5. **External Sources**:
+   - References external knowledge bases (Microsoft KB, vendor documentation) when applicable
+   - Prioritizes company-specific knowledge bases for company-specific issues
+   - Includes links to sources when available
+   - Only references external sources when relevant (not all tickets involve software with external documentation)
+   - Can acknowledge when no helpful information is found in similar tickets or external sources (doesn't guess)
+
+### Output Format
+
+The guidance is formatted for **efficient consumption by busy technicians**:
+- Concise, structured, and scannable
+- Avoids unnecessary fluff or lengthy explanations
+- Organized for quick action-taking
+- Markdown formatted for readability
+
+### When to Use
+
+- **Before starting work on a ticket**: Get recommended approach and questions to ask
+- **When stuck**: Find how similar issues were resolved
+- **For routing decisions**: Get category and assignment group recommendations
+- **For knowledge gaps**: Access external resources and historical solutions
+
+### Best Practices
+
+- Review the most similar tickets cited in the guidance
+- Check if external resources are applicable to your specific environment
+- Consider the suggested questions - they're based on what information is typically needed for similar issues
+- Use confidence levels to gauge recommendation strength
+- Generate new guidance if you've gathered additional information or filtered results differently
+
+**Note**: Click the button again to regenerate guidance after adjusting filters or gathering more information about the ticket.
 
 ## AI Enhancement Features
 
