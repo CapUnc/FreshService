@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections import Counter
 from functools import lru_cache
@@ -54,9 +55,26 @@ def _fetch_ticket_subject_desc(ticket_id: int) -> Tuple[str, str, str, Dict[str,
     Prefers server-side plain text; falls back to HTML→text if needed.
     """
     s = freshservice_session()
-    r = s.get(f"{FRESHSERVICE_BASE_URL}/tickets/{int(ticket_id)}", timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
-    t = (r.json() or {}).get("ticket", {}) or {}
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            r = s.get(
+                f"{FRESHSERVICE_BASE_URL}/tickets/{int(ticket_id)}",
+                timeout=REQUEST_TIMEOUT,
+            )
+            if r.status_code in (429, 503):
+                if attempt < attempts - 1:
+                    time.sleep(RATE_LIMIT_SLEEP * (attempt + 1))
+                    continue
+            r.raise_for_status()
+            t = (r.json() or {}).get("ticket", {}) or {}
+            break
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(RATE_LIMIT_SLEEP * (attempt + 1))
+    else:
+        t = {}
     subject = (t.get("subject") or "").strip()
     desc_text = (t.get("description_text") or "").strip()
     desc_html = (t.get("description") or "").strip()
@@ -65,7 +83,16 @@ def _fetch_ticket_subject_desc(ticket_id: int) -> Tuple[str, str, str, Dict[str,
     return subject, desc_text, desc_html, t
 
 
-def build_seed_text_from_ticket(ticket_id: int, *, clean: bool = True, use_ai_summary: bool = True) -> Tuple[str, Dict[str, str]]:
+def _use_ai_summary_default() -> bool:
+    return os.getenv("USE_AI_SUMMARY", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def build_seed_text_from_ticket(
+    ticket_id: int,
+    *,
+    clean: bool = True,
+    use_ai_summary: Optional[bool] = None,
+) -> Tuple[str, Dict[str, str]]:
     """
     Compose query text from subject + description (optionally cleaned to match embedding).
     Uses AI summarization for better semantic matching with closed tickets.
@@ -74,6 +101,8 @@ def build_seed_text_from_ticket(ticket_id: int, *, clean: bool = True, use_ai_su
     subject, desc_text_raw, desc_html_raw, ticket_payload = _fetch_ticket_subject_desc(ticket_id)
     desc_text_clean = clean_description(desc_text_raw) if clean else desc_text_raw
     
+    use_ai_summary = _use_ai_summary_default() if use_ai_summary is None else use_ai_summary
+
     # Create AI-enhanced search text for better semantic matching
     if use_ai_summary:
         try:

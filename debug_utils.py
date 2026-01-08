@@ -55,8 +55,7 @@ class SystemDiagnostics:
             if value:
                 # Mask sensitive values
                 if 'API_KEY' in var or 'SECRET' in var:
-                    masked_value = f"{value[:10]}...{value[-5:]}" if len(value) > 15 else "***"
-                    results['env_vars'][var] = masked_value
+                    results['env_vars'][var] = "***"
                 else:
                     results['env_vars'][var] = value
             else:

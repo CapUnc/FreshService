@@ -27,6 +27,7 @@ try:
         FRESHSERVICE_BASE_URL,
         RATE_LIMIT_SLEEP,
         freshservice_session,
+        get_ticket_url,
     )
     from search_tickets import (
         retrieve_similar_tickets,
@@ -43,7 +44,7 @@ try:
         safe_import
     )
     IMPORTS_SUCCESSFUL = True
-except ImportError as e:
+except Exception as e:
     logger.error(f"Import error: {e}")
     logger.error(traceback.format_exc())
     IMPORTS_SUCCESSFUL = False
@@ -153,8 +154,10 @@ if 'debug_mode' not in st.session_state:
 def _ticket_url(tid: Optional[int]) -> Optional[str]:
     if not tid:
         return None
-    dom = os.getenv("FRESHSERVICE_DOMAIN", "").strip()
-    return f"https://{dom}/helpdesk/tickets/{tid}" if dom else None
+    try:
+        return get_ticket_url(tid)
+    except Exception:
+        return None
 
 
 def _detect_ticket_id(raw: str) -> Optional[int]:

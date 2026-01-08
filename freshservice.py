@@ -1,10 +1,12 @@
 # File: freshservice.py
 from __future__ import annotations
 
+import argparse
 import logging
 import math
 import os
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 
 from bs4 import BeautifulSoup
@@ -152,12 +154,15 @@ def _fetch_conversations(session, ticket_id: int) -> List[str]:
         return texts
 
 
-def _fetch_all_tickets(session) -> List[dict]:
+def _fetch_all_tickets(session, *, updated_since: Optional[str] = None) -> List[dict]:
     page = 1
     tickets: List[dict] = []
     while True:
-        url = f"{FRESHSERVICE_BASE_URL}/tickets?per_page=100&page={page}"
-        r = session.get(url, timeout=REQUEST_TIMEOUT)
+        url = f"{FRESHSERVICE_BASE_URL}/tickets"
+        params = {"per_page": 100, "page": page}
+        if updated_since:
+            params["updated_since"] = updated_since
+        r = session.get(url, params=params, timeout=REQUEST_TIMEOUT)
         if r.status_code == 429:
             logging.info(f"[rate] 429 on tickets page={page}; sleeping {RATE_LIMIT_SLEEP}s")
             time.sleep(RATE_LIMIT_SLEEP)
@@ -216,14 +221,27 @@ def sanitize_metadata(meta: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------
 # Main ingest
 # ---------------------------
-def main() -> None:
+def _parse_since_days(value: str) -> Optional[str]:
+    if value is None:
+        return None
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return None
+    if days <= 0:
+        return None
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    return since.isoformat()
+
+
+def main(*, updated_since: Optional[str] = None) -> None:
     session = freshservice_session()
     coll = chroma_collection()
 
     total = added = duplicates = 0
     filtered_status = filtered_type = 0
 
-    tickets = _fetch_all_tickets(session)
+    tickets = _fetch_all_tickets(session, updated_since=updated_since)
     for t in tickets:
         total += 1
 
@@ -312,4 +330,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Ingest Freshservice tickets into ChromaDB.")
+    parser.add_argument(
+        "--since-days",
+        type=str,
+        default=os.getenv("INGEST_SINCE_DAYS"),
+        help="Only ingest tickets updated in the last N days (env: INGEST_SINCE_DAYS).",
+    )
+    args = parser.parse_args()
+    updated_since = _parse_since_days(args.since_days)
+    main(updated_since=updated_since)

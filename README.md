@@ -113,12 +113,14 @@ python start_app.py --diagnostics-only
 #### Search Configuration
 - `SEARCH_MAX_DISTANCE`: Default similarity threshold (default: 0.55)
 - `SEARCH_MAX_DISPLAY`: Results to display (default: 5)
+- `USE_AI_SUMMARY`: Enable AI summary seeding by default (default: 0)
 
 #### Ingest Configuration
 - `INGEST_STATUS_CODE`: Ticket status filter (default: 5 = Closed incidents)
 - `INGEST_MAX_TOKENS`: Max tokens per ticket (default: 3000)
 - `INCLUDE_CONVERSATIONS_IN_EMBED`: Include conversations in embeddings (default: 0)
 - `ENABLE_DESCRIPTION_CLEANING`: Clean ticket descriptions (default: 1)
+- `INGEST_SINCE_DAYS`: Only ingest tickets updated in the last N days (optional)
 
 ## 📖 Usage
 
@@ -129,13 +131,19 @@ python start_app.py --diagnostics-only
 python search_tickets.py "Teams video call problems" --max-distance 0.8
 ```
 
-#### Ticket Seed Search (AI-Enhanced by Default)
+#### Ticket Seed Search (AI-Enhanced When Enabled)
 ```bash
-# AI-enhanced search (recommended)
-python search_tickets.py --seed-ticket 4295 --max-distance 0.9
+# AI-enhanced search (enable via env)
+USE_AI_SUMMARY=1 python search_tickets.py --seed-ticket 4295 --max-distance 0.9
 
 # Raw text search (no AI)
 python search_tickets.py --seed-ticket 4295 --no-ai-summary --max-distance 0.9
+```
+
+#### Incremental Ingestion
+```bash
+# Ingest tickets updated in the last 7 days
+python freshservice.py --since-days 7
 ```
 
 #### Search Options

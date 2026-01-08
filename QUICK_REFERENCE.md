@@ -87,6 +87,8 @@ FRESHSERVICE_TICKET_URL_TEMPLATE=https://{domain}/a/tickets/{ticket_id}
 SEARCH_MAX_DISTANCE=0.55
 CHROMA_COLLECTION_NAME=FreshService
 CHROMA_TELEMETRY_IMPLEMENTATION=disabled
+USE_AI_SUMMARY=0
+INGEST_SINCE_DAYS=7
 ```
 
 ### Key Settings
@@ -94,6 +96,8 @@ CHROMA_TELEMETRY_IMPLEMENTATION=disabled
 - `INGEST_STATUS_CODE=5` - Only closed tickets (status=5)
 - `ENABLE_DESCRIPTION_CLEANING=1` - Clean ticket descriptions
 - `INCLUDE_CONVERSATIONS_IN_EMBED=0` - Don't embed conversations
+- `USE_AI_SUMMARY=0` - Opt in to AI-enhanced seed searches
+- `INGEST_SINCE_DAYS=7` - Only ingest tickets updated in the last N days
 - `CHROMA_TELEMETRY_IMPLEMENTATION=disabled` - Silence PostHog warnings from ChromaDB
 - `FRESHSERVICE_TICKET_URL_TEMPLATE=...` - Override if your tenant uses a non-default deep link
 - `FRESHSERVICE_PORTAL_DOMAIN=...` - Set when your agents use a custom helpdesk hostname

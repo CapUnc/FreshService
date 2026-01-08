@@ -34,7 +34,25 @@ def _getenv(key: str, default: Optional[str] = None, *, required: bool = False) 
 # ---------------------------------------
 # Freshservice config
 # ---------------------------------------
-FRESHSERVICE_DOMAIN = _getenv("FRESHSERVICE_DOMAIN", required=True).strip()
+def normalise_freshservice_domain(domain: str) -> str:
+    """Normalize a Freshservice domain to its subdomain form."""
+    cleaned = (domain or "").strip().lower()
+    if not cleaned:
+        raise ValueError("Freshservice domain is required.")
+    if "://" in cleaned:
+        cleaned = cleaned.split("://", 1)[1]
+    cleaned = cleaned.split("/", 1)[0]
+    if cleaned.endswith(".freshservice.com"):
+        cleaned = cleaned[: -len(".freshservice.com")]
+    cleaned = cleaned.strip(".")
+    if not cleaned:
+        raise ValueError("Freshservice domain is invalid.")
+    return cleaned
+
+
+FRESHSERVICE_DOMAIN = normalise_freshservice_domain(
+    _getenv("FRESHSERVICE_DOMAIN", required=True)
+)
 FRESHSERVICE_API_KEY = _getenv("FRESHSERVICE_API_KEY", required=True).strip()
 FRESHSERVICE_BASE_URL = f"https://{FRESHSERVICE_DOMAIN}.freshservice.com/api/v2"
 
@@ -176,7 +194,7 @@ def get_ticket_url(ticket_id: int | str) -> str:
         tid = int(ticket_id)
     except Exception:
         tid = ticket_id  # leave as-is if not an int
-    return f"https://{FRESHSERVICE_DOMAIN}/helpdesk/tickets/{tid}"
+    return f"https://{FRESHSERVICE_DOMAIN}.freshservice.com/helpdesk/tickets/{tid}"
 
 
 def get_distance_threshold() -> float:
