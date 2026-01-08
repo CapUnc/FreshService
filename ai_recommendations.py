@@ -10,7 +10,7 @@ from typing import List, Sequence
 
 import openai
 
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, OPENAI_GUIDANCE_MODEL
 from search_context import TicketContext
 from improved_ai_prompt import (
     create_ai_guidance_prompt_with_sources,
@@ -18,7 +18,7 @@ from improved_ai_prompt import (
 )
 
 
-DEFAULT_GUIDANCE_MODEL = os.getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini")
+DEFAULT_GUIDANCE_MODEL = OPENAI_GUIDANCE_MODEL
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +40,17 @@ def generate_guidance(
     model: str = DEFAULT_GUIDANCE_MODEL,
     temperature: float = 0.2,
 ) -> AIGuidance:
-    """Call OpenAI to produce recommended next steps and routing guidance."""
+    """Call OpenAI to produce recommended next steps and routing guidance.
+
+    Steps:
+      1. Summarise the similar tickets (including private notes when present).
+      2. Construct a structured JSON payload with the current ticket, category
+         taxonomy, detected tokens, and candidate assignment groups.
+      3. Ask the guidance model for a JSON response that includes coaching,
+         routing, confidence, and supporting ticket citations.
+      4. Parse the reply; if parsing fails, fall back to returning the raw text
+         so the UI can still surface something.
+    """
 
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY missing; cannot generate guidance")
@@ -134,6 +144,8 @@ def generate_guidance(
         try:
             parsed = json.loads(content)
         except json.JSONDecodeError:
+            # Some responses may include explanatory text around JSON. Attempt to
+            # recover the largest JSON-looking block before giving up.
             trimmed = content.strip()
             start = trimmed.find('{')
             end = trimmed.rfind('}')

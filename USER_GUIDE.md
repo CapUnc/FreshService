@@ -30,6 +30,12 @@ python search_tickets.py --seed-ticket 4295
 python search_tickets.py --seed-ticket 4295 --no-ai-summary
 ```
 
+## Data Maintenance
+
+- Run `python freshservice.py` to ingest or refresh embeddings. The script pulls **only closed incident tickets** (status code 5) and skips service requests by design.
+- Existing vectors are deduplicated by ticket ID; rerunning the script is safe and updates changed tickets.
+- Schedule the ingestion command (nightly or hourly) once the app is deployed in the work environment to keep search results current.
+
 ## Understanding Search Results
 
 ### Distance Scores
@@ -76,7 +82,7 @@ The system now includes AI-powered summarization that significantly improves sea
 
 #### How It Works
 1. **New Ticket Input**: You provide a ticket ID or description
-2. **AI Processing**: System creates an optimized summary using GPT-3.5-turbo
+2. **AI Processing**: System creates an optimized summary using the model set in `OPENAI_SUMMARIZER_MODEL` (default: `gpt-4o-mini`)
 3. **Enhanced Search**: Uses AI summary to find similar historical tickets
 4. **Better Results**: +11% more comprehensive and relevant results
 
@@ -84,7 +90,7 @@ The system now includes AI-powered summarization that significantly improves sea
 - **Better Semantic Matching**: AI expands technical terms and focuses on core issues
 - **Improved Relevance**: More accurate connections between new and historical tickets
 - **Fallback Safety**: Automatically uses raw text if AI fails
-- **Cost Effective**: ~$0.001 per search using GPT-3.5-turbo
+- **Cost Controlled**: Adjust `OPENAI_SUMMARIZER_MODEL` to balance quality and token cost (`gpt-4o-mini` is the default sweet spot)
 
 #### Control Options
 - **Streamlit**: Toggle "🤖 AI-enhanced search" checkbox
@@ -348,6 +354,21 @@ Enable debug mode in the Streamlit sidebar to see detailed error information and
 - Try during off-peak hours
 - Contact system administrator
 
+### ChromaDB Telemetry Warnings
+**Symptom:** Repeated log messages such as `capture() takes 1 positional argument but 3 were given` when starting the app or running ingestion.
+
+**What it means:** The bundled PostHog client in ChromaDB 0.4.x does not match the `posthog` version installed locally. It is harmless, but noisy.
+
+**Resolution:** Set either of the following environment variables before launching the app or ingest script:
+
+```bash
+export CHROMA_TELEMETRY_IMPLEMENTATION=disabled
+# or (newer builds)
+export CHROMA_TELEMETRY_ENABLED=0
+```
+
+Add the variable to your shell profile or process supervisor when moving to the work environment.
+
 ## Best Practices
 
 ### Search Etiquette
@@ -392,5 +413,5 @@ Enable debug mode in the Streamlit sidebar to see detailed error information and
 
 **Remember**: The semantic search is a powerful tool, but it works best when combined with your domain knowledge and experience. Use it to enhance your troubleshooting process, not replace your judgment.
 
-**Last Updated**: January 2025  
-**Version**: 1.0.0
+**Last Updated**: October 2025  
+**Version**: 1.1.0

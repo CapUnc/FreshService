@@ -11,6 +11,8 @@ from typing import Dict, List, Tuple
 import requests
 from dotenv import load_dotenv
 
+from config import normalise_freshservice_domain
+
 
 def load_environment(env_path: str = "api.env") -> None:
     """Load environment variables, preferring api.env when present."""
@@ -122,6 +124,12 @@ def main(argv: List[str] | None = None) -> int:
 
     if not domain or not api_key:
         print("❌ FRESHSERVICE_DOMAIN and FRESHSERVICE_API_KEY must be provided.")
+        return 1
+
+    try:
+        domain = normalise_freshservice_domain(domain)
+    except Exception as exc:
+        print(f"❌ Invalid Freshservice domain: {exc}")
         return 1
 
     output_path = Path(args.output).expanduser().resolve()

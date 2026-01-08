@@ -47,6 +47,8 @@ RATE_LIMIT_SLEEP = float(_getenv("RATE_LIMIT_SLEEP_SECONDS", "60")) # seconds
 # ---------------------------------------
 OPENAI_API_KEY = _getenv("OPENAI_API_KEY", required=True).strip()
 OPENAI_EMBEDDING_MODEL = _getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small").strip()
+OPENAI_GUIDANCE_MODEL = _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini").strip()
+OPENAI_SUMMARIZER_MODEL = _getenv("OPENAI_SUMMARIZER_MODEL", _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini")).strip()
 
 
 # ---------------------------------------

@@ -129,6 +129,22 @@ chmod +x start_app.py troubleshoot.py
 sudo python start_app.py
 ```
 
+### 7. ChromaDB Telemetry Warnings
+
+**Error:** `Failed to send telemetry event ... capture() takes 1 positional argument but 3 were given`
+
+**Cause:** ChromaDB 0.4.x ships with a PostHog telemetry client whose interface no longer matches the installed `posthog` package. The warning is cosmetic but noisy.
+
+**Solution:** Disable telemetry before launching Streamlit or running ingestion:
+
+```bash
+export CHROMA_TELEMETRY_IMPLEMENTATION=disabled
+# or, depending on the ChromaDB version:
+export CHROMA_TELEMETRY_ENABLED=0
+```
+
+Persist the setting in your shell profile or service configuration when deploying to a shared environment.
+
 ## 🔍 Debugging Tools
 
 ### System Diagnostics

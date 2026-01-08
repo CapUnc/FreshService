@@ -68,7 +68,7 @@ python search_tickets.py --seed-ticket 6427
 
 ## 📊 Current Database Stats
 
-- **Total Tickets**: 3,660 closed incidents
+- **Total Tickets**: 3,947 closed incidents (after 2025-10-29 ingestion)
 - **Range**: Ticket IDs 11 - 6501
 - **Top Categories**: Software/Applications (1,503), Hardware (569), Microsoft Office 365 (408)
 - **Top Subcategories**: Revit (367), Bluebeam (227), Teams (129), Enscape (95)
@@ -77,11 +77,16 @@ python search_tickets.py --seed-ticket 6427
 
 ### api.env (Environment Variables)
 ```env
-FRESHSERVICE_DOMAIN=cuninghamhelpdesk.freshservice.com
+FRESHSERVICE_DOMAIN=cuninghamhelpdesk
+FRESHSERVICE_PORTAL_DOMAIN=helpdesk.cuningham.com
 FRESHSERVICE_API_KEY=your-api-key
 OPENAI_API_KEY=your-openai-key
+OPENAI_GUIDANCE_MODEL=gpt-4o-mini
+OPENAI_SUMMARIZER_MODEL=gpt-4o-mini
+FRESHSERVICE_TICKET_URL_TEMPLATE=https://{domain}/a/tickets/{ticket_id}
 SEARCH_MAX_DISTANCE=0.55
 CHROMA_COLLECTION_NAME=FreshService
+CHROMA_TELEMETRY_IMPLEMENTATION=disabled
 ```
 
 ### Key Settings
@@ -89,6 +94,9 @@ CHROMA_COLLECTION_NAME=FreshService
 - `INGEST_STATUS_CODE=5` - Only closed tickets (status=5)
 - `ENABLE_DESCRIPTION_CLEANING=1` - Clean ticket descriptions
 - `INCLUDE_CONVERSATIONS_IN_EMBED=0` - Don't embed conversations
+- `CHROMA_TELEMETRY_IMPLEMENTATION=disabled` - Silence PostHog warnings from ChromaDB
+- `FRESHSERVICE_TICKET_URL_TEMPLATE=...` - Override if your tenant uses a non-default deep link
+- `FRESHSERVICE_PORTAL_DOMAIN=...` - Set when your agents use a custom helpdesk hostname
 
 ## 🔧 Common Troubleshooting
 

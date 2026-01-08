@@ -68,7 +68,8 @@ python start_app.py
    ```
 4. Configure environment variables in `api.env`:
    ```env
-   FRESHSERVICE_DOMAIN=your-domain.freshservice.com
+  FRESHSERVICE_DOMAIN=your-subdomain
+  FRESHSERVICE_PORTAL_DOMAIN=helpdesk.example.com  # optional custom portal host
    FRESHSERVICE_API_KEY=your-api-key
    OPENAI_API_KEY=your-openai-key
    ```
@@ -90,26 +91,31 @@ python start_app.py --diagnostics-only
 ### Environment Variables (`api.env`)
 
 #### Freshservice Configuration
-- `FRESHSERVICE_DOMAIN`: Your Freshservice domain (e.g., `cuninghamhelpdesk.freshservice.com`)
+- `FRESHSERVICE_DOMAIN`: Freshservice API subdomain (e.g., `cuninghamhelpdesk` or `cuninghamhelpdesk.freshservice.com`)
+- `FRESHSERVICE_PORTAL_DOMAIN`: Optional custom portal host for ticket links (e.g., `helpdesk.cuningham.com`)
 - `FRESHSERVICE_API_KEY`: Your Freshservice API key
 - `REQUEST_TIMEOUT_SECONDS`: API request timeout (default: 30)
 - `RATE_LIMIT_SLEEP_SECONDS`: Rate limiting delay (default: 0.1)
+- `FRESHSERVICE_TICKET_URL_TEMPLATE`: Optional override for ticket deep links (default: `https://{domain}/a/tickets/{ticket_id}`)
 
 #### OpenAI Configuration
 - `OPENAI_API_KEY`: Your OpenAI API key
 - `OPENAI_EMBEDDING_MODEL`: Embedding model (default: `text-embedding-3-small`)
+- `OPENAI_GUIDANCE_MODEL`: Model used for AI guidance (default: `gpt-4o-mini`)
+- `OPENAI_SUMMARIZER_MODEL`: Model used for ticket summaries & query expansion (defaults to `OPENAI_GUIDANCE_MODEL`)
 - `OPENAI_VISION_MODEL`: Vision model (default: `gpt-4o-mini`)
 
 #### ChromaDB Configuration
 - `CHROMA_DB_PATH`: Database path (default: `./chroma_db`)
 - `CHROMA_COLLECTION_NAME`: Collection name (default: `FreshService`)
+- `CHROMA_TELEMETRY_IMPLEMENTATION`: Set to `disabled` to silence PostHog telemetry warnings
 
 #### Search Configuration
 - `SEARCH_MAX_DISTANCE`: Default similarity threshold (default: 0.55)
 - `SEARCH_MAX_DISPLAY`: Results to display (default: 5)
 
 #### Ingest Configuration
-- `INGEST_STATUS_CODE`: Ticket status filter (default: 5 = Closed)
+- `INGEST_STATUS_CODE`: Ticket status filter (default: 5 = Closed incidents)
 - `INGEST_MAX_TOKENS`: Max tokens per ticket (default: 3000)
 - `INCLUDE_CONVERSATIONS_IN_EMBED`: Include conversations in embeddings (default: 0)
 - `ENABLE_DESCRIPTION_CLEANING`: Clean ticket descriptions (default: 1)
@@ -175,6 +181,7 @@ python freshservice.py
 
 This will:
 - Fetch closed incidents from Freshservice
+- Ignore service requests and any ticket whose status is not closed
 - Clean and process ticket descriptions
 - Generate embeddings using OpenAI
 - Store in ChromaDB for fast retrieval
@@ -296,11 +303,20 @@ pip install chromadb==0.4.22
 - Current: 3,660 tickets (~93MB)
 - Search time: <1 second for most queries
 - Memory usage: ~200MB during operation
-- AI costs: ~$0.001 per search (GPT-3.5-turbo)
+- AI costs: depends on `OPENAI_SUMMARIZER_MODEL`/`OPENAI_GUIDANCE_MODEL` (≈$0.003 per guidance call with `gpt-4o-mini`)
 
 #### Rate Limiting
 - Freshservice: 100 requests/minute (configurable)
 - OpenAI: 3,000 requests/minute (tier dependent)
+
+## 🚀 Deployment Notes
+
+- **Current usage**: Developed and run locally via `.venv` + `python start_app.py` or `streamlit run app.py`. Keep `api.env` outside version control and load it before launching.
+- **Preparing for work environment**: mirror the local setup on an internal host. Provision a systemd service (or equivalent) that activates the virtualenv, exports environment variables, and runs `python start_app.py --server.address 0.0.0.0` on a reserved port.
+- **Secrets management**: replace the local `api.env` with the organisation’s secret store (1Password, Vault, etc.) and inject `FRESHSERVICE_API_KEY`, `OPENAI_API_KEY`, and model overrides at runtime.
+- **Telemetry**: set `CHROMA_TELEMETRY_IMPLEMENTATION=disabled` in production to silence noisy PostHog warnings until ChromaDB updates its dependency.
+- **Telemetry roadmap**: Monitor ChromaDB release notes (≥0.5.x) for a PostHog compatibility fix and retest the app with telemetry enabled before re-enabling it.
+- **Monitoring**: tail `freshservice_debug.log` and Streamlit logs for OpenAI quota errors or ingestion failures. Schedule `python freshservice.py` (or `freshservice.py --since ...`) via cron to keep embeddings current.
 
 ## 📁 Project Structure
 

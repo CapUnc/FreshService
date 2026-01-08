@@ -10,16 +10,20 @@ This document provides detailed API documentation for the Freshservice Semantic 
 
 #### Freshservice Configuration
 ```env
-FRESHSERVICE_DOMAIN=cuninghamhelpdesk.freshservice.com
+FRESHSERVICE_DOMAIN=cuninghamhelpdesk
+FRESHSERVICE_PORTAL_DOMAIN=helpdesk.cuningham.com
 FRESHSERVICE_API_KEY=your-api-key-here
 REQUEST_TIMEOUT_SECONDS=30
 RATE_LIMIT_SLEEP_SECONDS=0.1
+FRESHSERVICE_TICKET_URL_TEMPLATE=https://{domain}/a/tickets/{ticket_id}
 ```
 
 #### OpenAI Configuration
 ```env
 OPENAI_API_KEY=sk-proj-your-key-here
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_GUIDANCE_MODEL=gpt-4o-mini
+OPENAI_SUMMARIZER_MODEL=gpt-4o-mini
 OPENAI_VISION_MODEL=gpt-4o-mini
 ```
 
@@ -41,6 +45,11 @@ INGEST_STATUS_CODE=5
 INGEST_MAX_TOKENS=3000
 INCLUDE_CONVERSATIONS_IN_EMBED=0
 ENABLE_DESCRIPTION_CLEANING=1
+```
+
+#### Telemetry Configuration
+```env
+CHROMA_TELEMETRY_IMPLEMENTATION=disabled
 ```
 
 ## AI Enhancement API

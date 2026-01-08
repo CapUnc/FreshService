@@ -53,6 +53,13 @@ def gather_ticket_contexts(
     *,
     limit: int = 5,
 ) -> List[TicketContext]:
+    """Fetch enriched context for the top-N similar tickets.
+
+    Each context bundles the public ticket fields plus private conversations so
+    the guidance model can see what ultimately solved the incident. When the
+    Freshservice API call fails we fall back to a lightweight version built
+    from the search metadata so the downstream pipeline keeps running.
+    """
     contexts: List[TicketContext] = []
     session = freshservice_session()
 
@@ -72,12 +79,16 @@ def gather_ticket_contexts(
 
 
 def _fetch_ticket_context(session, ticket_id: int, distance: float) -> TicketContext:
+    """Retrieve full ticket details + conversations with simple retry logic."""
     url = f"{FRESHSERVICE_BASE_URL}/tickets/{ticket_id}?include=conversations"
     attempts = 3
     for attempt in range(attempts):
         try:
             resp = session.get(url, timeout=REQUEST_TIMEOUT)
             if resp.status_code in (429, 503):
+                # Respect Freshservice rate limiting/back-off guidance; the
+                # staggered sleep keeps repeated guidance requests from hammering
+                # the API during busy hours.
                 if attempt < attempts - 1:
                     time.sleep(RATE_LIMIT_SLEEP * (attempt + 1))
                     continue
@@ -102,6 +113,9 @@ def _build_context_from_api(session, ticket: dict, conversations: list, distance
         body = conv.get("body_text") or conv.get("body") or ""
         if not body:
             continue
+        # Private notes typically contain the remediation steps the agent took,
+        # so we prioritise them over customer-facing replies when building the
+        # evidence bundle for the guidance model.
         notes.append(
             ConversationNote(
                 body=_truncate(_clean_text(body), 600),
@@ -140,6 +154,12 @@ def _build_context_from_api(session, ticket: dict, conversations: list, distance
 
 
 def _fallback_ticket_context(doc: str, meta: dict, distance: float) -> TicketContext:
+    """Build a minimal context object when the API lookup fails.
+
+    Guidance still benefits from having a subject/description and at least one
+    snippet of conversation, so we reuse whatever was present in the search
+    metadata rather than aborting the entire guidance flow.
+    """
     notes_raw = meta.get("conversations") or ""
     notes = []
     if notes_raw:

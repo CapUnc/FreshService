@@ -3,9 +3,8 @@
 # AI-powered ticket summarization for better semantic search
 # =========================
 
-import os
 import logging
-from typing import Dict, Optional
+from typing import Optional
 from dotenv import load_dotenv
 
 from improved_ai_prompt import (
@@ -15,12 +14,22 @@ from improved_ai_prompt import (
     create_search_optimizer_system_message,
 )
 
-# Load environment
+# Load environment early so config sees env vars
 load_dotenv('api.env') or load_dotenv()
+
+from config import OPENAI_API_KEY, OPENAI_SUMMARIZER_MODEL
 
 logger = logging.getLogger(__name__)
 
-def create_ticket_summary(subject: str, description: str, ticket_id: Optional[int] = None) -> str:
+DEFAULT_SUMMARIZER_MODEL = OPENAI_SUMMARIZER_MODEL
+
+def create_ticket_summary(
+    subject: str,
+    description: str,
+    ticket_id: Optional[int] = None,
+    *,
+    model: str = DEFAULT_SUMMARIZER_MODEL,
+) -> str:
     """
     Create an AI-powered summary of a ticket for better semantic search.
     
@@ -36,13 +45,13 @@ def create_ticket_summary(subject: str, description: str, ticket_id: Optional[in
         import openai
         
         # Set up OpenAI
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        openai.api_key = OPENAI_API_KEY
         
         system_message = create_enhanced_system_message()
         prompt = create_enhanced_ticket_summary_prompt(subject, description, ticket_id=ticket_id)
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
@@ -65,7 +74,12 @@ def create_ticket_summary(subject: str, description: str, ticket_id: Optional[in
         # Fallback to original text if AI fails
         return f"{subject}\n\n{description}"
 
-def enhance_search_query_with_ai(query_text: str, ticket_id: Optional[int] = None) -> str:
+def enhance_search_query_with_ai(
+    query_text: str,
+    ticket_id: Optional[int] = None,
+    *,
+    model: str = DEFAULT_SUMMARIZER_MODEL,
+) -> str:
     """
     Enhance a search query using AI to improve semantic matching.
     
@@ -80,13 +94,13 @@ def enhance_search_query_with_ai(query_text: str, ticket_id: Optional[int] = Non
         import openai
         
         # Set up OpenAI
-        openai.api_key = os.getenv('OPENAI_API_KEY')
+        openai.api_key = OPENAI_API_KEY
         
         system_message = create_search_optimizer_system_message()
         prompt = create_enhanced_search_query_prompt(query_text)
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
@@ -105,7 +119,13 @@ def enhance_search_query_with_ai(query_text: str, ticket_id: Optional[int] = Non
         # Fallback to original query if AI fails
         return query_text
 
-def create_comprehensive_ticket_embedding_text(subject: str, description: str, ticket_id: Optional[int] = None) -> str:
+def create_comprehensive_ticket_embedding_text(
+    subject: str,
+    description: str,
+    ticket_id: Optional[int] = None,
+    *,
+    model: str = DEFAULT_SUMMARIZER_MODEL,
+) -> str:
     """
     Create comprehensive text for embedding that combines original content with AI summary.
     
@@ -119,7 +139,7 @@ def create_comprehensive_ticket_embedding_text(subject: str, description: str, t
     """
     try:
         # Create AI summary
-        ai_summary = create_ticket_summary(subject, description, ticket_id)
+        ai_summary = create_ticket_summary(subject, description, ticket_id, model=model)
         
         # Combine with original content
         combined_text = f"{ai_summary}\n\n---\n\nOriginal:\n{subject}\n\n{description}"
