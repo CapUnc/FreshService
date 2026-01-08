@@ -139,11 +139,20 @@ The AI Guidance feature provides intelligent recommendations for ticket handling
 @dataclass
 class AIGuidance:
     agent_markdown: str              # Formatted guidance for the agent
-    recommended_category: List[str]  # Recommended category path
+    recommended_category: List[str]  # Recommended category path (3-level: [category, subcategory, item])
     recommended_group: str           # Suggested assignment group
     confidence: str                  # Confidence level (low/medium/high)
     supporting_tickets: List[dict]   # List of supporting ticket IDs with rationale
 ```
+
+**Category Path Structure:**
+- Category paths follow a 3-level hierarchy: `[category, subcategory, item]`
+- Example: `["Microsoft Office 365", "Teams", "Crash/Error/Freeze"]`
+- The AI is instructed to provide all 3 levels when items exist
+- When only 2 levels are provided, the system automatically infers the item from:
+  1. Most common item in similar tickets with matching category/subcategory
+  2. Only item available in the taxonomy for that category/subcategory
+  3. If no inference is possible, the item remains empty (valid for categories without items)
 
 #### Example Usage
 ```python
@@ -176,7 +185,7 @@ guidance = generate_guidance(
 
 # Access guidance components
 print(guidance.agent_markdown)           # Agent instructions
-print(guidance.recommended_category)     # ['Microsoft Office 365', 'Teams']
+print(guidance.recommended_category)     # ['Microsoft Office 365', 'Teams', 'Crash/Error/Freeze']
 print(guidance.recommended_group)        # 'Desktop Services'
 print(guidance.confidence)               # 'high'
 print(guidance.supporting_tickets)       # [{'ticket_id': 4295, 'rationale': '...'}]
@@ -202,6 +211,25 @@ Configuration:
 - **Model**: Controlled by `OPENAI_GUIDANCE_MODEL` (default: `gpt-4o-mini`)
 - **Temperature**: Default 0.2 for consistent, focused responses
 - **Prompt Logging**: Set `LOG_GUIDANCE_PROMPT=1` to log full prompts for debugging
+
+#### Category Path Inference
+
+When the AI provides a category path with only 2 levels (missing the item), the system automatically infers the missing item using intelligent fallback logic:
+
+**Inference Process:**
+1. **Similar Tickets Analysis**: Examines similar tickets with matching category/subcategory to find the most common item
+2. **Taxonomy Lookup**: If similar tickets don't provide a clear answer, checks if only one item exists in the taxonomy for that category/subcategory
+3. **Graceful Fallback**: If no inference is possible, leaves the item empty (valid for categories that don't have items)
+
+**Implementation:**
+- Function: `_infer_category_item()` in `app.py`
+- Called automatically when building category payload: `_category_payload_from_path()`
+- Logs inference events for debugging and monitoring
+
+**Example:**
+- AI returns: `["Microsoft Office 365", "Teams"]` (2 levels)
+- System finds similar tickets with: `["Microsoft Office 365", "Teams", "Crash/Error/Freeze"]`
+- Inferred payload: `{"category": "Microsoft Office 365", "sub_category": "Teams", "item_category": "Crash/Error/Freeze"}`
 
 #### Error Handling
 - Gracefully handles missing API keys

@@ -150,7 +150,16 @@ def create_ai_guidance_prompt_with_sources(
         when history is partial)--recommend next
         actions for the agent. Provide:
           • `agent_response_markdown`: succinct coaching written in markdown
-          • `recommended_category_path`: array describing the best category path
+          • `recommended_category_path`: array describing the complete category path with ALL available levels:
+            - Always provide 3 elements: [category, subcategory, item]
+            - Include the item level whenever it exists and is applicable
+            - Use null or empty string for item ONLY when the category/subcategory combination genuinely has no items
+            - Reference the category_taxonomy in the payload to see available items for each category/subcategory
+            - When similar tickets show an item for that category/subcategory, include it in your recommendation
+            - Examples:
+              * ["Microsoft Office 365", "Teams", "Crash/Error/Freeze"] (full 3-level path)
+              * ["Hardware", "Computer", null] (only if no items exist for Hardware/Computer)
+              * Do NOT return ["Microsoft Office 365", "Teams"] (missing item) if items exist
           • `recommended_assignment_group`: name of the best-fit group (or null)
           • `confidence`: low/medium/high (or a short explanation)
           • `supporting_tickets`: list of objects with `ticket_id` and `rationale`
@@ -164,6 +173,12 @@ def create_ai_guidance_prompt_with_sources(
         what is commonly documented in similar tickets, and do NOT ask for
         device inventory details available via GoTo Resolve (e.g., computer
         name, RAM).
+        
+        IMPORTANT for category_path: Always check the category_taxonomy structure
+        and similar tickets to determine if an item level exists. Include all
+        3 levels [category, subcategory, item] when items are available for
+        that category/subcategory combination. Only omit the item when the
+        taxonomy confirms no items exist for that path.
 
         The `agent_response_markdown` must be concise, action-oriented, and
         structured for fast scanning using this format (short bullets only):

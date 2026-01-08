@@ -35,7 +35,7 @@ try:
         build_seed_text_from_ticket,
     )
     from search_intent import extract_query_intent
-    from search_context import gather_ticket_contexts, load_category_tree
+    from search_context import gather_ticket_contexts, load_category_tree, TicketContext
     from ai_recommendations import AIGuidance, generate_guidance
     from debug_utils import (
         SystemDiagnostics,
@@ -440,7 +440,13 @@ def _extract_preview_text(doc: str, subject: str, limit: int = 100) -> str:
 
 
 
-def _render_guidance(guidance, contexts, ticket_id: Optional[int], seed_meta: Optional[Dict[str, Any]]) -> None:
+def _render_guidance(
+    guidance, 
+    contexts, 
+    ticket_id: Optional[int], 
+    seed_meta: Optional[Dict[str, Any]],
+    categories_tree: Optional[dict] = None
+) -> None:
     logger.info('render guidance start', extra={'ticket_id': ticket_id, 'has_category': bool(guidance.recommended_category)})
 
     agent_text = (guidance.agent_markdown or '').strip()
@@ -580,7 +586,18 @@ def _render_guidance(guidance, contexts, ticket_id: Optional[int], seed_meta: Op
             )
             selected_group_id = _safe_int(raw_group)
 
-    category_payload = _category_payload_from_path(recommended_category) if recommended_category else None
+    # Load categories_tree if not provided
+    if categories_tree is None:
+        categories_tree = load_category_tree()
+    
+    category_payload = (
+        _category_payload_from_path(
+            recommended_category,
+            similar_contexts=contexts,
+            categories_tree=categories_tree
+        ) 
+        if recommended_category else None
+    )
     target_group_update = (
         selected_group_id if selected_group_id is not None and selected_group_id != current_group_id else None
     )
@@ -629,16 +646,131 @@ def _build_current_ticket_payload(*, query_text: str, seed_meta: Optional[Dict[s
     return payload
 
 
-def _category_payload_from_path(path: List[str]) -> Dict[str, Optional[str]]:
+def _infer_category_item(
+    category: str,
+    subcategory: str,
+    similar_contexts: List[TicketContext],
+    categories_tree: dict,
+) -> Optional[str]:
+    """
+    Infer item when only category/subcategory provided.
+    
+    Tries in order:
+    1. Most common item from similar tickets with matching category/subcategory
+    2. Only item available in taxonomy for that category/subcategory
+    3. Returns None if no inference possible (which is valid - not all categories have items)
+    
+    Args:
+        category: Category name
+        subcategory: Subcategory name
+        similar_contexts: List of TicketContext objects from similar tickets
+        categories_tree: Category taxonomy dict structure
+        
+    Returns:
+        Inferred item name or None if cannot be inferred
+    """
+    from collections import Counter
+    
+    # Normalize for comparison (case-insensitive, strip whitespace)
+    category_norm = (category or '').strip().lower()
+    subcategory_norm = (subcategory or '').strip().lower()
+    
+    # Try 1: Find most common item from similar tickets with matching category/subcategory
+    matching_items = []
+    for ctx in similar_contexts:
+        ctx_cat = (ctx.category or '').strip().lower()
+        ctx_sub = (ctx.subcategory or '').strip().lower()
+        ctx_item = (ctx.item or '').strip()
+        
+        if (ctx_cat == category_norm and 
+            ctx_sub == subcategory_norm and 
+            ctx_item):
+            matching_items.append(ctx_item)
+    
+    if matching_items:
+        most_common = Counter(matching_items).most_common(1)
+        if most_common:
+            return most_common[0][0]  # Return the item name (not the count)
+    
+    # Try 2: Check if only one item exists in taxonomy
+    if categories_tree and category and subcategory:
+        category_data = categories_tree.get(category, {})
+        
+        # Try exact match first
+        subcategory_items = category_data.get(subcategory, [])
+        
+        # If no exact match, try case-insensitive match
+        if not subcategory_items:
+            for sub_key, items_list in category_data.items():
+                if sub_key.strip().lower() == subcategory_norm:
+                    subcategory_items = items_list
+                    break
+        
+        # If only one item, use it
+        if len(subcategory_items) == 1:
+            return subcategory_items[0]
+        
+        # If multiple items, return None (don't guess)
+        # If no items, return None (category may not have items)
+    
+    # No inference possible - return None (valid if item doesn't exist)
+    return None
+
+
+def _category_payload_from_path(
+    path: List[str],
+    similar_contexts: Optional[List[TicketContext]] = None,
+    categories_tree: Optional[dict] = None,
+) -> Dict[str, Optional[str]]:
+    """
+    Build category payload from path, inferring item if needed.
+    
+    Args:
+        path: List of category path elements [category, subcategory, item?]
+        similar_contexts: Optional list of TicketContext objects for inference
+        categories_tree: Optional category taxonomy for inference
+        
+    Returns:
+        Dictionary with category, sub_category, and optionally item_category
+    """
     padded = list(path) + [None, None, None]
     category, subcategory, item = padded[:3]
+    
+    # Remove None values and strip whitespace
+    category = category.strip() if category else None
+    subcategory = subcategory.strip() if subcategory else None
+    item = item.strip() if item else None
+    
     payload: Dict[str, Optional[str]] = {}
+    
     if category:
         payload["category"] = category
     if subcategory:
         payload["sub_category"] = subcategory
-    if item:
+    
+    # If item missing but we have category+subcategory, try to infer it
+    if not item and category and subcategory:
+        if similar_contexts is not None and categories_tree is not None:
+            inferred_item = _infer_category_item(
+                category, 
+                subcategory, 
+                similar_contexts, 
+                categories_tree
+            )
+            if inferred_item:
+                payload["item_category"] = inferred_item
+                # Log the inference for debugging
+                logger.info(
+                    'Inferred category item',
+                    extra={
+                        'category': category,
+                        'subcategory': subcategory,
+                        'inferred_item': inferred_item
+                    }
+                )
+    elif item:
         payload["item_category"] = item
+    
     return payload
 
 
@@ -1099,6 +1231,7 @@ if run_guidance:
                 "key": guidance_key,
                 "payload": guidance,
                 "contexts": similar_contexts,
+                "categories_tree": categories_tree,
                 "ticket_id": seed_tid,
                 "seed_meta": seed_meta,
             }
@@ -1116,6 +1249,7 @@ if guidance_matches:
         stored_guidance.get("contexts") or [],
         stored_guidance.get("ticket_id"),
         stored_guidance.get("seed_meta"),
+        stored_guidance.get("categories_tree"),
     )
 elif st.session_state.get('guidance_panel_open'):
     st.info("Guidance is out of date for this ticket. Generate new recommendations.")

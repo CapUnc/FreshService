@@ -83,7 +83,10 @@ The **✨ Generate AI Guidance** button provides intelligent, actionable recomme
 2. **Intelligent Recommendations**: The AI provides:
    - **Actionable next steps** tailored to the current ticket's specific context
    - **Questions to ask** when important information is missing (based on what's commonly documented in similar tickets)
-   - **Recommended category path** for proper ticket classification
+   - **Recommended category path** for proper ticket classification:
+     * Three-level structure: `Category → Subcategory → Item` (e.g., "Microsoft Office 365 → Teams → Crash/Error/Freeze")
+     * AI is instructed to provide complete paths when items exist
+     * **Automatic item inference**: If the AI provides only 2 levels, the system automatically fills in the missing item based on similar tickets or taxonomy
    - **Suggested assignment group** with confidence level
    - **External resources** with links when relevant (prioritizes company-specific knowledge bases when available)
 
