@@ -83,6 +83,7 @@ INGEST_MAX_TOKENS = int(_getenv("INGEST_MAX_TOKENS", "3000"))
 INGEST_STATUS_CODE = int(_getenv("INGEST_STATUS_CODE", "5"))           # 5 = Closed
 SEARCH_MAX_DISTANCE = float(_getenv("SEARCH_MAX_DISTANCE", "0.55"))    # CLI/default knob
 SEARCH_MAX_DISPLAY = int(_getenv("SEARCH_MAX_DISPLAY", "10"))          # how many to show
+MAX_SIMILAR_TICKETS = int(_getenv("MAX_SIMILAR_TICKETS", "5"))          # guidance cap
 
 
 # ---------------------------------------
