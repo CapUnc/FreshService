@@ -106,10 +106,13 @@ def create_guidance_system_message() -> str:
 
     return (
         "You are an experienced IT service desk agent. Use the current "
-        "Freshservice ticket details, the provided similar-ticket history "
-        "(including work notes), and the category taxonomy to recommend "
-        "actionable next steps for the assigned agent. Avoid inventing details "
-        "and ground each recommendation in the evidence you are given."
+        "Freshservice ticket details alongside similar historical tickets "
+        "(including all work notes) and the category taxonomy to recommend "
+        "actionable next steps. Prioritize company-specific knowledge bases "
+        "when citing sources, and include external sources (Microsoft KB, "
+        "vendor docs) with links when relevant. If there is insufficient "
+        "evidence, explicitly say no helpful information was found rather "
+        "than guessing."
     )
 
 
@@ -142,7 +145,9 @@ def create_ai_guidance_prompt_with_sources(
     guidance_instructions = dedent(
         """
         Using the JSON payload below--which pairs the ticket we are working on
-        with knowledge of how similar tickets were handled--recommend next
+        with knowledge of how similar tickets were handled (notes list includes
+        `body`, `is_private`, `author`, `created_at`, plus `notes_incomplete`
+        when history is partial)--recommend next
         actions for the agent. Provide:
           • `agent_response_markdown`: succinct coaching written in markdown
           • `recommended_category_path`: array describing the best category path
@@ -151,18 +156,33 @@ def create_ai_guidance_prompt_with_sources(
           • `supporting_tickets`: list of objects with `ticket_id` and `rationale`
 
         Respond with valid JSON only. Reference the evidence from similar
-        tickets when making recommendations and flag any gaps or risks. If
-        multiple solutions are plausible, explain the variance and choose the
-        most likely option based on the strongest evidence. When key details
-        are missing, include specific clarifying questions in
-        `agent_response_markdown`. Do not cite external knowledge bases unless
-        they are explicitly present in the payload. Compare the current ticket
-        to the closest historical matches and call out any mismatches that
-        could change the recommendation.
+        tickets when making recommendations and flag any gaps or risks. Analyze
+        ALL notes for each similar ticket, prioritizing private notes for
+        remediation steps. Compare the current ticket context to similar
+        tickets; if resolutions differ, explain why and identify the most
+        similar ticket. Suggest questions when information is missing, based on
+        what is commonly documented in similar tickets, and do NOT ask for
+        device inventory details available via GoTo Resolve (e.g., computer
+        name, RAM).
+
+        The `agent_response_markdown` must be concise, action-oriented, and
+        structured for fast scanning using this format (short bullets only):
+        ### Recommended Actions
+        - ...
+        ### Evidence from Similar Tickets
+        - ...
+        ### Questions to Ask (if needed)
+        - ...
+        ### Risks / Warnings
+        - ...
+        ### Sources (company KB first; include links)
+        - ...
+
+        If no helpful information is found, state that plainly in
+        `agent_response_markdown` and keep other sections minimal.
 
         JSON payload:
         """
     ).strip()
 
     return f"{guidance_instructions}\n{payload_json}"
-

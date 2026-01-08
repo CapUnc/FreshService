@@ -132,6 +132,7 @@ The AI Guidance feature provides intelligent recommendations for ticket handling
 - Avoids unnecessary fluff or lengthy explanations
 - Organized for quick action-taking
 - Markdown formatted for readability
+- Uses headings such as Recommended Actions, Evidence, Questions, Risks, Sources
 
 #### Return Format
 ```python
@@ -147,10 +148,11 @@ class AIGuidance:
 #### Example Usage
 ```python
 from ai_recommendations import generate_guidance, AIGuidance
+from config import MAX_SIMILAR_TICKETS
 from search_context import gather_ticket_contexts, load_category_tree
 
 # Gather contexts from similar tickets
-similar_contexts = gather_ticket_contexts(search_results, limit=5)
+similar_contexts = gather_ticket_contexts(search_results, limit=MAX_SIMILAR_TICKETS)
 
 # Load category taxonomy
 categories_tree = load_category_tree()
@@ -187,10 +189,14 @@ The guidance generation uses sophisticated prompts in `improved_ai_prompt.py`:
 - `create_guidance_system_message()`: Defines the AI's role as an experienced IT service desk agent
 - `create_ai_guidance_prompt_with_sources()`: Constructs the user prompt with:
   - Current ticket details
-  - Similar tickets with ALL their notes
+  - Similar tickets with ALL their notes (including privacy flags and timestamps)
+  - An enforced cap via `MAX_SIMILAR_TICKETS` to control token usage
   - Category taxonomy
   - Detected tokens (software/products)
   - Assignment groups
+
+Configuration:
+- `MAX_SIMILAR_TICKETS` (env): hard cap on similar ticket contexts passed to AI guidance.
 
 #### Configuration
 - **Model**: Controlled by `OPENAI_GUIDANCE_MODEL` (default: `gpt-4o-mini`)
