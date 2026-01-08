@@ -68,17 +68,28 @@ def generate_guidance(
         category_path_parts = [part for part in (ctx.category, ctx.subcategory, ctx.item) if part]
         category_path = " → ".join(category_path_parts) if category_path_parts else "Unknown"
 
-        resolution_note = next((note.body for note in ctx.notes if note.is_private and note.body), None)
-        if not resolution_note:
-            resolution_note = next((note.body for note in ctx.notes if note.body), None)
+        note_entries = [
+            {
+                "body": note.body,
+                "is_private": note.is_private,
+                "author": note.author,
+                "created_at": note.created_at,
+            }
+            for note in sorted(
+                ctx.notes,
+                key=lambda item: item.created_at or "",
+            )
+            if note.body
+        ]
 
         similar_ticket_entries.append(
             {
                 "ticket_id": ctx.ticket_id,
                 "subject": ctx.subject or "",
-                "resolution": resolution_note or "No resolution provided",
+                "notes": note_entries,
                 "category": category_path,
                 "assignment_group": ctx.group_name or "Unknown",
+                "notes_incomplete": ctx.notes_incomplete,
             }
         )
 

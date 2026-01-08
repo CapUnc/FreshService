@@ -12,7 +12,15 @@ import logging
 
 from bs4 import BeautifulSoup
 
-from config import FRESHSERVICE_BASE_URL, RATE_LIMIT_SLEEP, REQUEST_TIMEOUT, freshservice_session
+from config import (
+    FRESHSERVICE_BASE_URL,
+    MAX_SIMILAR_TICKETS,
+    RATE_LIMIT_SLEEP,
+    REQUEST_TIMEOUT,
+    freshservice_session,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,6 +44,7 @@ class TicketContext:
     responder_name: Optional[str]
     distance: float
     notes: List[ConversationNote]
+    notes_incomplete: bool
 
 
 def load_category_tree(path: Path | str = Path("categories.json")) -> dict:
@@ -51,7 +60,7 @@ def load_category_tree(path: Path | str = Path("categories.json")) -> dict:
 def gather_ticket_contexts(
     results: Iterable[tuple[str, dict, float]],
     *,
-    limit: int = 5,
+    limit: int | None = MAX_SIMILAR_TICKETS,
 ) -> List[TicketContext]:
     """Fetch enriched context for the top-N similar tickets.
 
@@ -59,12 +68,22 @@ def gather_ticket_contexts(
     the guidance model can see what ultimately solved the incident. When the
     Freshservice API call fails we fall back to a lightweight version built
     from the search metadata so the downstream pipeline keeps running.
+    The limit is capped by MAX_SIMILAR_TICKETS to avoid excessive token usage.
     """
     contexts: List[TicketContext] = []
     session = freshservice_session()
+    safe_limit = MAX_SIMILAR_TICKETS if limit is None else max(0, limit)
+    if safe_limit > MAX_SIMILAR_TICKETS:
+        logger.warning(
+            "Requested similar ticket limit %s exceeds MAX_SIMILAR_TICKETS=%s; capping to %s.",
+            safe_limit,
+            MAX_SIMILAR_TICKETS,
+            MAX_SIMILAR_TICKETS,
+        )
+        safe_limit = MAX_SIMILAR_TICKETS
 
     for doc, meta, dist in results:
-        if len(contexts) >= limit:
+        if len(contexts) >= safe_limit:
             break
         ticket_id = meta.get("ticket_id")
         if not ticket_id:
@@ -150,6 +169,7 @@ def _build_context_from_api(session, ticket: dict, conversations: list, distance
         responder_name=_safe_trim(ticket.get("responder_name") or ticket.get("responder_id")),
         distance=distance,
         notes=notes,
+        notes_incomplete=False,
     )
 
 
@@ -163,14 +183,33 @@ def _fallback_ticket_context(doc: str, meta: dict, distance: float) -> TicketCon
     notes_raw = meta.get("conversations") or ""
     notes = []
     if notes_raw:
-        notes.append(
-            ConversationNote(
-                body=_truncate(notes_raw, 600),
-                is_private=False,
-                author=None,
-                created_at=None,
+        if isinstance(notes_raw, list):
+            for entry in notes_raw:
+                body = ""
+                if isinstance(entry, dict):
+                    body = entry.get("body_text") or entry.get("body") or ""
+                else:
+                    body = str(entry)
+                body = _truncate(_clean_text(body), 600)
+                if not body:
+                    continue
+                notes.append(
+                    ConversationNote(
+                        body=body,
+                        is_private=False,
+                        author=None,
+                        created_at=None,
+                    )
+                )
+        else:
+            notes.append(
+                ConversationNote(
+                    body=_truncate(_clean_text(str(notes_raw)), 600),
+                    is_private=False,
+                    author=None,
+                    created_at=None,
+                )
             )
-        )
 
     return TicketContext(
         ticket_id=int(meta.get("ticket_id") or 0),
@@ -184,6 +223,7 @@ def _fallback_ticket_context(doc: str, meta: dict, distance: float) -> TicketCon
         responder_name=_safe_trim(meta.get("responder_name")),
         distance=distance,
         notes=notes,
+        notes_incomplete=True,
     )
 
 
@@ -239,7 +279,6 @@ def _resolve_group_name(session, group_id: int) -> Optional[str]:
     fallback = str(group_id)
     _GROUP_NAME_CACHE[group_id] = fallback
     return fallback
-logger = logging.getLogger(__name__)
 
 
 _GROUP_NAME_CACHE: Dict[int, str] = {}
