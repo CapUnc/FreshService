@@ -105,10 +105,11 @@ def create_guidance_system_message() -> str:
     """System directive for AI guidance generation."""
 
     return (
-        "You are an experienced IT service desk agent. Using the current "
-        "Freshservice ticket details alongside how similar historical tickets "
-        "were handled (including work notes) and the category taxonomy, "
-        "recommend actionable next steps for the assigned agent."
+        "You are an experienced IT service desk agent. Use only the current "
+        "Freshservice ticket details, the provided similar-ticket history "
+        "(including work notes), and the category taxonomy to recommend "
+        "actionable next steps for the assigned agent. Do not invent details; "
+        "cite the supporting evidence when you recommend an action or decision."
     )
 
 
@@ -151,11 +152,17 @@ def create_ai_guidance_prompt_with_sources(
 
         Respond with valid JSON only. Reference the evidence from similar
         tickets when making recommendations and flag any gaps or risks.
+        If multiple solutions are plausible, explain the variance and prefer
+        the most likely outcome based on the strongest evidence. When key
+        details are missing, include clarifying questions in
+        `agent_response_markdown`. Do not cite external knowledge bases unless
+        they are explicitly present in the payload. Compare the current ticket
+        to the closest historical matches and call out any mismatches that may
+        affect the recommendation.
 
         JSON payload:
         """
     ).strip()
 
     return f"{guidance_instructions}\n{payload_json}"
-
 
