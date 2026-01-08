@@ -4,6 +4,7 @@
 # =========================
 
 import logging
+from functools import lru_cache
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -22,6 +23,38 @@ from config import OPENAI_API_KEY, OPENAI_SUMMARIZER_MODEL
 logger = logging.getLogger(__name__)
 
 DEFAULT_SUMMARIZER_MODEL = OPENAI_SUMMARIZER_MODEL
+
+
+@lru_cache(maxsize=512)
+def _cached_ticket_summary(
+    subject: str,
+    description: str,
+    ticket_id: Optional[int],
+    model: str,
+) -> str:
+    import openai
+
+    openai.api_key = OPENAI_API_KEY
+
+    system_message = create_enhanced_system_message()
+    prompt = create_enhanced_ticket_summary_prompt(subject, description, ticket_id=ticket_id)
+
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=150,
+        temperature=0.3,
+    )
+
+    summary = response.choices[0].message.content.strip()
+
+    if ticket_id:
+        summary = f"[Ticket {ticket_id}] {summary}"
+
+    return summary
 
 def create_ticket_summary(
     subject: str,
@@ -42,33 +75,9 @@ def create_ticket_summary(
         AI-generated summary optimized for semantic search
     """
     try:
-        import openai
-        
-        # Set up OpenAI
-        openai.api_key = OPENAI_API_KEY
-        
-        system_message = create_enhanced_system_message()
-        prompt = create_enhanced_ticket_summary_prompt(subject, description, ticket_id=ticket_id)
-
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.3
-        )
-        
-        summary = response.choices[0].message.content.strip()
-        
-        # Add ticket context if provided
-        if ticket_id:
-            summary = f"[Ticket {ticket_id}] {summary}"
-        
-        logger.info(f"Created AI summary for ticket: {ticket_id or 'unknown'}")
+        summary = _cached_ticket_summary(subject, description, ticket_id, model)
+        logger.info("Created AI summary for ticket: %s", ticket_id or "unknown")
         return summary
-        
     except Exception as e:
         logger.error(f"Failed to create AI summary: {e}")
         # Fallback to original text if AI fails

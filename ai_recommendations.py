@@ -119,11 +119,7 @@ def generate_guidance(
         prompt_logger.info("System prompt: %s", system_prompt)
         prompt_logger.info("User prompt: %s", prompt_text)
 
-    # Debug logging for prompt verification
-    if os.getenv("LOG_GUIDANCE_PROMPT") == "1":
-        logger.info("=== OpenAI guidance request ===")
-        logger.info("System: %s", system_prompt)
-        logger.info("User prompt: %s", prompt_text)
+    # Debug logging for prompt verification handled by prompt_logger above.
 
     openai.api_key = OPENAI_API_KEY
     try:

@@ -13,17 +13,17 @@ python start_app.py --diagnostics-only
 
 ### Web Interface (Recommended)
 1. Open your browser to: http://localhost:8501
-2. Toggle "🤖 AI-enhanced search" for better results (enabled by default)
+2. Toggle "🤖 AI-enhanced search" for better results (enable via `USE_AI_SUMMARY=1`)
 3. Enter your search query or ticket ID
 4. Adjust the distance threshold if needed (default: 0.9)
 5. Review results and click to open tickets
 
 ### Command Line (Power Users)
 ```bash
-# Search for similar tickets (AI-enhanced by default)
+# Search for similar tickets (AI-enhanced when enabled)
 python search_tickets.py "Teams video call problems"
 
-# Find tickets similar to a specific ticket (AI-enhanced)
+# Find tickets similar to a specific ticket (AI-enhanced when enabled)
 python search_tickets.py --seed-ticket 4295
 
 # Use raw text (no AI enhancement)
@@ -35,6 +35,7 @@ python search_tickets.py --seed-ticket 4295 --no-ai-summary
 - Run `python freshservice.py` to ingest or refresh embeddings. The script pulls **only closed incident tickets** (status code 5) and skips service requests by design.
 - Existing vectors are deduplicated by ticket ID; rerunning the script is safe and updates changed tickets.
 - Schedule the ingestion command (nightly or hourly) once the app is deployed in the work environment to keep search results current.
+- Use `python freshservice.py --since-days 7` (or `INGEST_SINCE_DAYS=7`) to limit ingestion to recently updated tickets.
 
 ## Understanding Search Results
 
