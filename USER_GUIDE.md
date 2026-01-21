@@ -18,6 +18,36 @@ python start_app.py --diagnostics-only
 4. Adjust the distance threshold if needed (default: 0.9)
 5. Review results and click to open tickets
 
+### Unassigned Tickets Dashboard
+
+When you open the web interface without entering a search query, you'll see the **Unassigned Open Tickets** dashboard. This feature helps you quickly identify and manage tickets that need attention.
+
+#### Features
+- **Automatic Filtering**: Shows only open, unassigned incident tickets
+- **Compact Display**: Each ticket displayed in a compact 3-line format showing:
+  - Line 1: Ticket number, status, priority (with color indicators), created date, and action buttons
+  - Line 2: Subject line (truncated if too long)
+  - Line 3: Category path (truncated if too long)
+- **Quick Actions**:
+  - **🔗 Open**: Click to open the ticket in Freshservice in a new tab
+  - **🔍 Search Similar**: Click to automatically search for similar tickets using the ticket ID
+- **Refresh Button**: Manually refresh the list to get the latest unassigned tickets
+- **Smart Caching**: Results are cached for 5 minutes to reduce API calls
+
+#### Priority Indicators
+- 🟢 Low
+- 🟡 Medium  
+- 🟠 High
+- 🔴 Urgent
+
+#### Usage
+1. Open the web interface at http://localhost:8501
+2. Leave the search box empty
+3. The dashboard automatically displays all unassigned, open tickets
+4. Use the action buttons to open tickets or search for similar ones
+5. Click "🔄 Refresh" to update the list
+
+
 ### Command Line (Power Users)
 ```bash
 # Search for similar tickets (AI-enhanced when enabled)

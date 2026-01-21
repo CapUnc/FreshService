@@ -9,6 +9,7 @@ import os
 import re
 import time
 import traceback
+from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -177,6 +178,214 @@ def _detect_ticket_id(raw: str) -> Optional[int]:
         return int(m.group(1))
     except Exception:
         return None
+
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def fetch_unassigned_tickets(_session, max_tickets: int = 500) -> List[Dict[str, Any]]:
+    """
+    Fetch all unassigned, open tickets from Freshservice.
+    
+    Filters:
+    - Status != 5 (not closed)
+    - responder_id is None (unassigned)
+    - type == "Incident" (exclude service requests)
+    
+    Args:
+        _session: Freshservice session (prefixed with _ to skip hashing by Streamlit cache)
+        max_tickets: Maximum number of tickets to fetch (default: 500)
+        
+    Returns:
+        List of ticket dictionaries with relevant fields
+    """
+    tickets: List[Dict[str, Any]] = []
+    page = 1
+    
+    while len(tickets) < max_tickets:
+        url = f"{FRESHSERVICE_BASE_URL}/tickets"
+        params = {"per_page": 100, "page": page}
+        
+        attempts = 3
+        for attempt in range(attempts):
+            try:
+                r = _session.get(url, params=params, timeout=REQUEST_TIMEOUT)
+                if r.status_code == 429:
+                    wait = RATE_LIMIT_SLEEP * (attempt + 1)
+                    logger.info(f"[rate] 429 on unassigned tickets page={page}; sleeping {wait:.2f}s")
+                    time.sleep(wait)
+                    continue
+                if not r.ok:
+                    logger.warning(f"Failed to fetch tickets page {page}: {r.status_code}")
+                    return tickets  # Return what we have
+                
+                batch = (r.json() or {}).get("tickets", []) or []
+                if not batch:
+                    return tickets  # No more tickets
+                
+                # Filter for unassigned, open incidents
+                for t in batch:
+                    # Check status (not closed)
+                    try:
+                        status = int(t.get("status", 0))
+                    except (ValueError, TypeError):
+                        status = 0
+                    
+                    if status == 5:  # Closed
+                        continue
+                    
+                    # Check type (incident only)
+                    ttype = (t.get("type") or "").strip().lower()
+                    if ttype != "incident":
+                        continue
+                    
+                    # Check if unassigned (responder_id is None or empty)
+                    responder_id = t.get("responder_id")
+                    if responder_id is not None:
+                        continue
+                    
+                    # Extract relevant fields
+                    ticket_data = {
+                        "id": t.get("id"),
+                        "subject": (t.get("subject") or "").strip(),
+                        "status": status,
+                        "created_at": t.get("created_at"),
+                        "updated_at": t.get("updated_at"),
+                        "priority": t.get("priority"),
+                        "category": t.get("category"),
+                        "subcategory": t.get("subcategory") or t.get("sub_category"),
+                        "item": t.get("item") or t.get("item_category"),
+                        "requester_id": t.get("requester_id"),
+                    }
+                    
+                    tickets.append(ticket_data)
+                    
+                    if len(tickets) >= max_tickets:
+                        return tickets
+                
+                page += 1
+                break  # Success, move to next page
+                
+            except Exception as exc:
+                if attempt < attempts - 1:
+                    wait = RATE_LIMIT_SLEEP * (attempt + 1)
+                    logger.warning(f"Error fetching tickets page {page} (attempt {attempt + 1}): {exc}; retrying in {wait:.2f}s")
+                    time.sleep(wait)
+                else:
+                    logger.error(f"Failed to fetch tickets page {page} after {attempts} attempts: {exc}")
+                    return tickets  # Return what we have
+    
+    return tickets
+
+
+def _render_unassigned_ticket_row(ticket: Dict[str, Any]) -> None:
+    """Render a single unassigned ticket row with action buttons in a compact 3-line format."""
+    ticket_id = ticket.get("id")
+    if not ticket_id:
+        return
+    
+    subject = ticket.get("subject", "No subject") or "No subject"
+    status = ticket.get("status")
+    created_at = ticket.get("created_at", "")
+    priority = ticket.get("priority")
+    category = ticket.get("category")
+    subcategory = ticket.get("subcategory")
+    item = ticket.get("item")
+    
+    # Format created date
+    created_display = ""
+    if created_at:
+        try:
+            # Parse ISO format and show date only
+            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            created_display = dt.strftime("%Y-%m-%d")
+        except Exception:
+            created_display = created_at[:10] if len(created_at) >= 10 else created_at
+    
+    # Priority mapping with emoji
+    priority_map = {1: "🟢 Low", 2: "🟡 Medium", 3: "🟠 High", 4: "🔴 Urgent"}
+    priority_text = priority_map.get(priority, f"Priority {priority}" if priority else "N/A")
+    
+    # Category path (truncate if too long)
+    category_path = " → ".join(p for p in (category, subcategory, item) if p) or "Uncategorized"
+    if len(category_path) > 60:
+        category_path = category_path[:57] + "..."
+    
+    # Truncate subject if too long
+    subject_display = subject
+    if len(subject_display) > 100:
+        subject_display = subject_display[:97] + "..."
+    
+    status_text = _status_label(status)
+    ticket_url = _ticket_url(ticket_id)
+    
+    # Compact 3-line layout
+    # Line 1: Ticket # | Status | Priority | Created | Actions
+    line1_cols = st.columns([1.5, 1, 1.2, 1, 1.5])
+    with line1_cols[0]:
+        st.markdown(f"**#{ticket_id}**")
+    with line1_cols[1]:
+        st.caption(status_text)
+    with line1_cols[2]:
+        st.caption(priority_text)
+    with line1_cols[3]:
+        st.caption(created_display)
+    with line1_cols[4]:
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if ticket_url:
+                st.markdown(f'<a href="{ticket_url}" target="_blank" style="text-decoration: none; font-size: 0.9em;">🔗</a>', unsafe_allow_html=True)
+        with btn_col2:
+            if st.button("🔍", key=f"search_{ticket_id}", use_container_width=True, help="Search similar tickets"):
+                st.session_state["query"] = str(ticket_id)
+                st.rerun()
+    
+    # Line 2: Subject
+    st.markdown(f"**{subject_display}**")
+    
+    # Line 3: Category
+    st.caption(f"📁 {category_path}")
+    
+    st.divider()
+
+
+def _render_unassigned_tickets_dashboard() -> None:
+    """Render the unassigned tickets dashboard on the home page."""
+    # Header with refresh button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.header("📋 Unassigned Open Tickets")
+    with col2:
+        if st.button("🔄 Refresh", key="refresh_unassigned", use_container_width=True):
+            # Clear the cache for this function
+            fetch_unassigned_tickets.clear()
+            st.rerun()
+    
+    # Fetch tickets
+    try:
+        session = get_freshservice_session()
+        # Use status instead of spinner to avoid showing function name
+        with st.status("Loading unassigned tickets...", expanded=False):
+            tickets = fetch_unassigned_tickets(session)
+        
+        if not tickets:
+            st.success("✅ No unassigned tickets! All tickets are assigned.")
+            return
+        
+        st.caption(f"**{len(tickets)}** unassigned ticket{'s' if len(tickets) != 1 else ''} found")
+        st.markdown("---")
+        
+        # Render each ticket
+        for ticket in tickets:
+            _render_unassigned_ticket_row(ticket)
+            
+    except Exception as e:
+        st.error(f"❌ **Failed to fetch unassigned tickets**: {str(e)}")
+        logger.error(f"Error fetching unassigned tickets: {e}")
+        logger.error(traceback.format_exc())
+        
+        if st.session_state.get("debug_mode"):
+            with st.expander("🔧 Debug Information"):
+                st.error(f"Error: {str(e)}")
+                st.code(traceback.format_exc())
 
 
 def _bucket_by_percentile(results: List[Tuple[str, dict, float]]):
@@ -1092,10 +1301,10 @@ elif st.session_state.get('guidance_refresh_requested'):
     st.session_state.pop('guidance_refresh_requested', None)
 
 # ----------------------------
-# Execute search
+# Execute search or show unassigned tickets
 # ----------------------------
 if not query_text:
-    st.info("Enter a free-text query or a ticket ID to search.")
+    _render_unassigned_tickets_dashboard()
     st.stop()
 
 # Perform search (no caching - always fresh results)

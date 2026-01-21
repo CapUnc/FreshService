@@ -11,6 +11,7 @@ A powerful semantic search tool for Freshservice tickets that enables IT help de
 - **Clean Data**: Automated text cleaning removes signatures and reply chains
 - **Rich Metadata**: Full categorization, agent attribution, and ticket details
 - **Web UI**: Streamlit-based interface with debug mode and AI toggles
+- **📋 Unassigned Tickets Dashboard**: View and manage all unassigned, open tickets with quick actions to open or search for similar tickets
 - **✨ On-Demand AI Guidance**: Intelligent recommendations analyzing all notes from similar tickets, suggesting questions, referencing external knowledge bases, and providing context-aware solutions
 - **CLI Interface**: Command-line tool for power users
 - **🔧 Error Handling**: Comprehensive diagnostics and troubleshooting tools
