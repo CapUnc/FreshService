@@ -9,6 +9,7 @@ reply history, confidentiality footers, and signature blocks.
 
 from __future__ import annotations
 import re
+from typing import Optional
 
 # --- Normalization ---
 def _normalize_ws(s: str) -> str:
@@ -66,6 +67,15 @@ def _strip_signature_block(text: str) -> str:
             if contactish >= 2:
                 return "\n".join(lines[:i]).rstrip()
     return text
+
+# --- HTML to text conversion ---
+def html_to_text(html: Optional[str]) -> str:
+    """Convert HTML to plain text, handling None/empty input."""
+    if not html:
+        return ""
+    from bs4 import BeautifulSoup
+    return BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
+
 
 # --- Public API ---
 def clean_description(raw: str) -> str:

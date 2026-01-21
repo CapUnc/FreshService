@@ -30,8 +30,8 @@ python search_tickets.py "Teams issues" --open 1
 # Reingest all tickets
 python freshservice.py
 
-# Extract error messages from screenshots
-python extract_error_messages.py --ticket 4295 --save
+# Run system diagnostics
+python start_app.py --diagnostics-only
 ```
 
 ## 🎯 Distance Thresholds
@@ -210,8 +210,16 @@ FreshService/
 - **Distance > 0.6**: Loosely related
 
 ### Metadata Usage
-- **Agent**: Shows who handled similar issues
-- **Group**: Indicates which team to escalate to
+- **Agent**: Shows who handled similar issues (resolved via `agent_resolver.py`)
+- **Group**: Indicates which team to escalate to (resolved via `agent_resolver.py`)
+
+## 🚀 Performance Features
+
+### Optimizations
+- **Caching**: Agent/group names and category trees are cached for faster lookups
+- **Session Reuse**: HTTP connections are reused in Streamlit for better performance
+- **Parallel Processing**: Ticket context fetching uses parallel API calls (faster AI guidance)
+- **Unified Utilities**: Consolidated HTML parsing and agent resolution reduce code duplication
 - **Category Path**: Shows problem classification
 - **Priority**: Indicates severity level
 

@@ -1,4 +1,4 @@
-# Freshservice Semantic Search v2.0 - API Documentation
+# Freshservice Semantic Search v2.1 - API Documentation
 
 ## Overview
 
@@ -24,7 +24,6 @@ OPENAI_API_KEY=sk-proj-your-key-here
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 OPENAI_GUIDANCE_MODEL=gpt-4o-mini
 OPENAI_SUMMARIZER_MODEL=gpt-4o-mini
-OPENAI_VISION_MODEL=gpt-4o-mini
 ```
 
 #### ChromaDB Configuration
@@ -62,7 +61,6 @@ The system includes AI-powered summarization for improved semantic matching betw
 
 **Functions:**
 - `create_ticket_summary(subject, description, ticket_id=None)`: Creates AI summary
-- `enhance_search_query_with_ai(query_text, ticket_id=None)`: Enhances search queries
 - `create_comprehensive_ticket_embedding_text(subject, description, ticket_id=None)`: Combines AI summary with original text
 
 **Example Usage:**
@@ -356,40 +354,89 @@ python freshservice.py [options]
 }
 ```
 
-## Vision Helper API
+## Utility Modules
 
-### Extract Error Messages
-```bash
-python extract_error_messages.py --ticket TICKET_ID [options]
-```
+### Text Cleaning Module (`text_cleaning.py`)
 
-#### Parameters
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `--ticket` | int | Yes | - | Ticket ID to process |
-| `--save` | flag | No | False | Save processed images |
-| `--model` | string | No | gpt-4o-mini | Vision model to use |
-| `--output-dir` | string | No | ./ticket_images | Output directory |
+Centralized text processing utilities for HTML conversion and description cleaning.
 
-#### Supported Image Sources
-- Ticket attachments
-- Conversation attachments  
-- Inline images (`<img>` tags)
-- Data URIs (`data:image/...`)
-- Content IDs (`cid:...`)
+#### Functions
 
-#### Return Format
+**`html_to_text(html: Optional[str]) -> str`**
+- Converts HTML content to plain text
+- Handles None/empty input gracefully
+- Uses BeautifulSoup for parsing
+- Returns empty string for None/empty input
+
+**`clean_description(raw: str) -> str`**
+- Removes email signatures and reply chains
+- Strips confidentiality footers
+- Normalizes whitespace
+- Conservative cleaning that preserves technical content
+
+**Example Usage:**
 ```python
-{
-    "ticket_id": 4295,
-    "images_processed": 3,
-    "error_messages": [
-        "Application Error: 0x80004005",
-        "Failed to initialize graphics driver"
-    ],
-    "saved_images": ["error1.jpg", "error2.jpg"]
-}
+from text_cleaning import html_to_text, clean_description
+
+# Convert HTML to text
+plain_text = html_to_text("<p>Hello <b>world</b></p>")
+# Returns: "Hello world"
+
+# Clean ticket description
+cleaned = clean_description(raw_ticket_description)
 ```
+
+### Agent Resolver Module (`agent_resolver.py`)
+
+Unified agent and group name resolution with intelligent caching and retry logic.
+
+#### Functions
+
+**`get_agent_name(agent_id: Optional[int]) -> str`**
+- Resolves agent ID to agent name
+- Returns "Unassigned" for None
+- Returns "Unknown" on error or API failure
+- Uses `@lru_cache(maxsize=8192)` for performance
+- Automatic retry with rate limit respect (3 attempts)
+
+**`get_group_name(group_id: Optional[int]) -> str`**
+- Resolves group ID to group name
+- Returns "Unknown" for None or errors
+- Uses `@lru_cache(maxsize=4096)` for performance
+- Automatic retry with rate limit respect (3 attempts)
+
+**Features:**
+- Intelligent name extraction from API payloads
+- Handles multiple name field formats (first/last, name, contact.name)
+- Respects Freshservice rate limits (429/503 handling)
+- Consistent error handling across all modules
+
+**Example Usage:**
+```python
+from agent_resolver import get_agent_name, get_group_name
+
+# Get agent name
+agent_name = get_agent_name(12345)
+# Returns: "John Doe" or "Unassigned" or "Unknown"
+
+# Get group name
+group_name = get_group_name(67890)
+# Returns: "IT Support" or "Unknown"
+```
+
+**Performance:**
+- Results are cached using `@lru_cache` decorator
+- Reduces API calls for frequently accessed agents/groups
+- Cache automatically manages memory (LRU eviction)
+
+## Additional Tools
+
+### Maintenance Scripts
+
+**Category Export** (`maintenance/categories.py`)
+- Export Freshservice ticket categories to JSON
+- Updates category taxonomy for search intent detection
+- Usage: `python -m maintenance.categories --output categories.json`
 
 ## Web Interface API
 
@@ -397,6 +444,11 @@ python extract_error_messages.py --ticket TICKET_ID [options]
 ```bash
 streamlit run app.py --server.port 8501
 ```
+
+#### Performance Optimizations
+- **Session Caching**: HTTP sessions are cached using `@st.cache_resource` for connection reuse
+- **Parallel Processing**: Ticket context fetching uses parallel API calls (max 5 concurrent) for faster AI guidance
+- **Intelligent Caching**: Category trees and agent names are cached to reduce API calls
 
 #### Interface Components
 - **Search Input**: Free text or ticket ID input

@@ -10,8 +10,6 @@ from collections import Counter
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
-from bs4 import BeautifulSoup
-
 from config import (
     chroma_collection,
     freshservice_session,
@@ -20,7 +18,8 @@ from config import (
     SEARCH_MAX_DISTANCE,
     RATE_LIMIT_SLEEP,
 )
-from text_cleaning import clean_description
+from text_cleaning import clean_description, html_to_text
+from agent_resolver import get_agent_name
 from search_intent import (
     QueryIntent,
     ResultSignals,
@@ -35,15 +34,6 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 # --------------------------------
 INCIDENT_WHERE: Dict[str, Any] = {"type": "incident"}
 INCIDENT_CAP_WHERE: Dict[str, Any] = {"type": "Incident"}
-
-
-# --------------------------------
-# HTML → text (for seeding fallback)
-# --------------------------------
-def _html_to_text(html: Optional[str]) -> str:
-    if not html:
-        return ""
-    return BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
 
 
 # --------------------------------
@@ -79,7 +69,7 @@ def _fetch_ticket_subject_desc(ticket_id: int) -> Tuple[str, str, str, Dict[str,
     desc_text = (t.get("description_text") or "").strip()
     desc_html = (t.get("description") or "").strip()
     if not desc_text and desc_html:
-        desc_text = _html_to_text(desc_html)
+        desc_text = html_to_text(desc_html)
     return subject, desc_text, desc_html, t
 
 
@@ -198,60 +188,6 @@ def _triples(res) -> List[Tuple[str, dict, float]]:
 # --------------------------------
 # Assigned agent resolution (responder_id → name), with rate limit resilience
 # --------------------------------
-def _name_from_agent_payload(payload: dict) -> str:
-    """
-    Prefer agent-level first/last (old working behavior), then agent.name,
-    then contact.name, then contact.first/last.
-    """
-    agent = (payload.get("agent") or {}) if isinstance(payload, dict) else {}
-    # 1) agent.first_name + agent.last_name
-    first = str(agent.get("first_name") or "").strip()
-    last = str(agent.get("last_name") or "").strip()
-    if first or last:
-        return f"{first} {last}".strip()
-    # 2) agent.name
-    name = str(agent.get("name") or "").strip()
-    if name:
-        return name
-    # 3) agent.contact.name
-    contact = agent.get("contact") or {}
-    cname = str(contact.get("name") or "").strip()
-    if cname:
-        return cname
-    # 4) contact.first_name + contact.last_name
-    cfirst = str(contact.get("first_name") or "").strip()
-    clast = str(contact.get("last_name") or "").strip()
-    if cfirst or clast:
-        return f"{cfirst} {clast}".strip()
-    return "Unknown"
-
-
-@lru_cache(maxsize=4096)
-def _fetch_agent_name(agent_id: int) -> str:
-    """
-    Resolve agent name for responder_id with small retries on 429/503.
-    """
-    if not isinstance(agent_id, int):
-        return "Unassigned"
-    sess = freshservice_session()
-    url = f"{FRESHSERVICE_BASE_URL}/agents/{agent_id}"
-    attempts = 3
-    for i in range(attempts):
-        try:
-            r = sess.get(url, timeout=REQUEST_TIMEOUT)
-            if r.status_code in (429, 503):
-                if i < attempts - 1:
-                    time.sleep(RATE_LIMIT_SLEEP)
-                    continue
-            r.raise_for_status()
-            return _name_from_agent_payload(r.json() or {})
-        except Exception:
-            if i < attempts - 1:
-                time.sleep(1)
-                continue
-            return "Unknown"
-
-
 @lru_cache(maxsize=8192)
 def _fetch_ticket_responder_id(ticket_id: int) -> Optional[int]:
     sess = freshservice_session()
@@ -296,7 +232,7 @@ def _resolve_assigned_agent(meta: dict) -> dict:
             rid_int = _fetch_ticket_responder_id(tid_int)
 
     if rid_int is not None:
-        resolved = _fetch_agent_name(rid_int).strip()
+        resolved = get_agent_name(rid_int).strip()
         if resolved and resolved.lower() not in {"unknown", "unassigned"}:
             out["responder_name"] = resolved
     return out

@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 from improved_ai_prompt import (
     create_enhanced_system_message,
     create_enhanced_ticket_summary_prompt,
-    create_enhanced_search_query_prompt,
-    create_search_optimizer_system_message,
 )
 
 # Load environment early so config sees env vars
@@ -83,51 +81,6 @@ def create_ticket_summary(
         # Fallback to original text if AI fails
         return f"{subject}\n\n{description}"
 
-def enhance_search_query_with_ai(
-    query_text: str,
-    ticket_id: Optional[int] = None,
-    *,
-    model: str = DEFAULT_SUMMARIZER_MODEL,
-) -> str:
-    """
-    Enhance a search query using AI to improve semantic matching.
-    
-    Args:
-        query_text: Original search text
-        ticket_id: Optional ticket ID for context
-        
-    Returns:
-        AI-enhanced search query
-    """
-    try:
-        import openai
-        
-        # Set up OpenAI
-        openai.api_key = OPENAI_API_KEY
-        
-        system_message = create_search_optimizer_system_message()
-        prompt = create_enhanced_search_query_prompt(query_text)
-
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=200,
-            temperature=0.3
-        )
-        
-        enhanced_query = response.choices[0].message.content.strip()
-        
-        logger.info(f"Enhanced search query with AI")
-        return enhanced_query
-        
-    except Exception as e:
-        logger.error(f"Failed to enhance search query: {e}")
-        # Fallback to original query if AI fails
-        return query_text
-
 def create_comprehensive_ticket_embedding_text(
     subject: str,
     description: str,
@@ -159,30 +112,3 @@ def create_comprehensive_ticket_embedding_text(
         logger.error(f"Failed to create comprehensive embedding text: {e}")
         # Fallback to original text
         return f"{subject}\n\n{description}"
-
-if __name__ == "__main__":
-    # Test the AI summarization
-    test_subject = "Revit desktop connector is acting up"
-    test_description = "I can't open my desktop connector for some reason. I think it's causing issues with tasks I need to complete."
-    
-    print("🧪 Testing AI Summarization")
-    print("=" * 40)
-    print(f"Original Subject: {test_subject}")
-    print(f"Original Description: {test_description}")
-    print()
-    
-    try:
-        summary = create_ticket_summary(test_subject, test_description, 6511)
-        print(f"AI Summary: {summary}")
-        print()
-        
-        enhanced_query = enhance_search_query_with_ai(test_subject + " " + test_description)
-        print(f"Enhanced Query: {enhanced_query}")
-        print()
-        
-        combined = create_comprehensive_ticket_embedding_text(test_subject, test_description, 6511)
-        print(f"Combined Text (first 200 chars): {combined[:200]}...")
-        
-    except Exception as e:
-        print(f"❌ Test failed: {e}")
-        print("Make sure OPENAI_API_KEY is set in your environment")

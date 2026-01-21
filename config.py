@@ -12,7 +12,6 @@ from requests.auth import HTTPBasicAuth
 
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
-import openai
 
 # ---------------------------------------
 # Load environment (api.env preferred)
@@ -61,7 +60,7 @@ RATE_LIMIT_SLEEP = float(_getenv("RATE_LIMIT_SLEEP_SECONDS", "60")) # seconds
 
 
 # ---------------------------------------
-# OpenAI (used by error extractor; embeddings too)
+# OpenAI (used for embeddings and AI features)
 # ---------------------------------------
 OPENAI_API_KEY = _getenv("OPENAI_API_KEY", required=True).strip()
 OPENAI_EMBEDDING_MODEL = _getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small").strip()
@@ -98,12 +97,6 @@ def freshservice_session() -> Session:
     s.auth = HTTPBasicAuth(FRESHSERVICE_API_KEY, "X")
     s.headers.update({"Accept": "application/json", "Content-Type": "application/json"})
     return s
-
-
-def openai_client():
-    """OpenAI SDK client (used by extract_error_messages.py)."""
-    openai.api_key = OPENAI_API_KEY
-    return openai
 
 
 def embedding_function() -> OpenAIEmbeddingFunction:

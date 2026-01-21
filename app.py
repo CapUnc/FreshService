@@ -53,6 +53,14 @@ except Exception as e:
 # Page config & lightweight styles
 # --------------------------------
 st.set_page_config(page_title="Freshservice Semantic Search", layout="wide")
+
+# --------------------------------
+# Session management (cached for reuse)
+# --------------------------------
+@st.cache_resource
+def get_freshservice_session():
+    """Get a cached Freshservice session to reuse connections."""
+    return freshservice_session()
 # Use generic selectors (avoid Streamlit's ephemeral emotion classnames)
 st.markdown(
     """
@@ -255,7 +263,7 @@ def _status_label(status_id: Optional[int]) -> str:
 
 @st.cache_data(show_spinner=False)
 def _assignment_group_options() -> List[Tuple[int, str]]:
-    session = freshservice_session()
+    session = get_freshservice_session()
     groups: Dict[int, str] = {}
     page = 1
     retries = 0
@@ -828,7 +836,7 @@ def _update_ticket_fields(
     item: Optional[str] = None,
     assignment_group_id: Optional[int] = None,
 ) -> None:
-    session = freshservice_session()
+    session = get_freshservice_session()
     update: Dict[str, Any] = {}
     if category is not None:
         update["category"] = category

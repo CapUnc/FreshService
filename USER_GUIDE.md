@@ -345,12 +345,6 @@ The distance threshold controls how similar results must be to your query:
 
 ### Smart Troubleshooting Tools
 
-#### Interactive Troubleshooting
-```bash
-python troubleshoot.py
-```
-This provides an interactive menu to fix common issues automatically.
-
 #### System Diagnostics
 ```bash
 python start_app.py --diagnostics-only

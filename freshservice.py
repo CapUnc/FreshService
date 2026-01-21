@@ -9,8 +9,6 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 
-from bs4 import BeautifulSoup
-
 from config import (
     chroma_collection,
     freshservice_session,
@@ -22,7 +20,8 @@ from config import (
 )
 
 # Use the shared, single-source cleaner
-from text_cleaning import clean_description
+from text_cleaning import clean_description, html_to_text
+from agent_resolver import get_agent_name, get_group_name
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -33,106 +32,11 @@ ENABLE_DESCRIPTION_CLEANING = os.getenv("ENABLE_DESCRIPTION_CLEANING", "1").stri
 # ---------------------------
 # Utilities
 # ---------------------------
-def _html_to_text(html: Optional[str]) -> str:
-    if not html:
-        return ""
-    return BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
-
-
 def trim_to_token_limit(text: str, max_words: int) -> str:
     words = (text or "").split()
     return " ".join(words[:max_words]) if len(words) > max_words else (text or "")
 
 
-_AGENT_NAME_CACHE: Dict[int, str] = {}
-_GROUP_NAME_CACHE: Dict[int, str] = {}
-
-
-def _get_agent_name(session, agent_id) -> str:
-    if agent_id is None:
-        return "Unassigned"
-    try:
-        agent_id = int(agent_id)
-    except Exception:
-        return "Unassigned"
-
-    if agent_id in _AGENT_NAME_CACHE:
-        return _AGENT_NAME_CACHE[agent_id]
-
-    url = f"{FRESHSERVICE_BASE_URL}/agents/{agent_id}"
-    attempts = 3
-    for attempt in range(attempts):
-        try:
-            r = session.get(url, timeout=REQUEST_TIMEOUT)
-            if r.status_code in (429, 503):
-                wait = RATE_LIMIT_SLEEP * (attempt + 1)
-                logging.info(
-                    f"[rate] agent lookup {agent_id} -> {r.status_code}; sleeping {wait:.2f}s"
-                )
-                time.sleep(wait)
-                continue
-            r.raise_for_status()
-            agent = (r.json() or {}).get("agent", {}) or {}
-            contact = (agent.get("contact") or {}) if isinstance(agent, dict) else {}
-            name = (contact.get("name") or "").strip()
-            if not name:
-                first = (contact.get("first_name") or "").strip()
-                last = (contact.get("last_name") or "").strip()
-                name = f"{first} {last}".strip()
-            name = name or "Unknown"
-            _AGENT_NAME_CACHE[agent_id] = name
-            return name
-        except Exception as exc:
-            if attempt < attempts - 1:
-                wait = RATE_LIMIT_SLEEP * (attempt + 1)
-                logging.info(
-                    f"[warn] agent lookup {agent_id} failed ({exc}); retrying in {wait:.2f}s"
-                )
-                time.sleep(wait)
-            else:
-                logging.warning(f"[warn] agent lookup {agent_id} failed; using 'Unknown'")
-    _AGENT_NAME_CACHE[agent_id] = "Unknown"
-    return "Unknown"
-
-
-def _get_group_name(session, group_id) -> str:
-    if group_id is None:
-        return "Unknown"
-    try:
-        group_id = int(group_id)
-    except Exception:
-        return "Unknown"
-
-    if group_id in _GROUP_NAME_CACHE:
-        return _GROUP_NAME_CACHE[group_id]
-
-    url = f"{FRESHSERVICE_BASE_URL}/groups/{group_id}"
-    attempts = 3
-    for attempt in range(attempts):
-        try:
-            r = session.get(url, timeout=REQUEST_TIMEOUT)
-            if r.status_code in (429, 503):
-                wait = RATE_LIMIT_SLEEP * (attempt + 1)
-                logging.info(
-                    f"[rate] group lookup {group_id} -> {r.status_code}; sleeping {wait:.2f}s"
-                )
-                time.sleep(wait)
-                continue
-            r.raise_for_status()
-            name = ((r.json() or {}).get("group", {}) or {}).get("name", "") or "Unknown"
-            _GROUP_NAME_CACHE[group_id] = name
-            return name
-        except Exception as exc:
-            if attempt < attempts - 1:
-                wait = RATE_LIMIT_SLEEP * (attempt + 1)
-                logging.info(
-                    f"[warn] group lookup {group_id} failed ({exc}); retrying in {wait:.2f}s"
-                )
-                time.sleep(wait)
-            else:
-                logging.warning(f"[warn] group lookup {group_id} failed; using 'Unknown'")
-    _GROUP_NAME_CACHE[group_id] = "Unknown"
-    return "Unknown"
 
 
 def _fetch_conversations(session, ticket_id: int) -> List[str]:
@@ -148,7 +52,7 @@ def _fetch_conversations(session, ticket_id: int) -> List[str]:
         convs = (r.json() or {}).get("conversations", []) or []
         texts: List[str] = []
         for c in convs:
-            txt = c.get("body_text") or _html_to_text(c.get("body"))
+            txt = c.get("body_text") or html_to_text(c.get("body"))
             if txt:
                 texts.append(txt)
         return texts
@@ -270,7 +174,7 @@ def main(*, updated_since: Optional[str] = None) -> None:
         # Prefer plain text; fallback to HTML→text; then clean if enabled
         description = (t.get("description_text") or "").strip()
         if not description:
-            description = _html_to_text(t.get("description") or "")
+            description = html_to_text(t.get("description") or "")
         if ENABLE_DESCRIPTION_CLEANING:
             description = clean_description(description)
 
@@ -286,8 +190,8 @@ def main(*, updated_since: Optional[str] = None) -> None:
         # Best-effort agent/group names
         responder_id = t.get("responder_id")
         group_id = t.get("group_id")
-        agent_name = _get_agent_name(session, responder_id)
-        group_name = _get_group_name(session, group_id)
+        agent_name = get_agent_name(responder_id)
+        group_name = get_group_name(group_id)
 
         raw_meta: Dict[str, Any] = {
             "doc_type": "core",  # searchable doc marker

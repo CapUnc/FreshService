@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 import json
 import time
 import logging
-
-from bs4 import BeautifulSoup
 
 from config import (
     FRESHSERVICE_BASE_URL,
@@ -19,6 +19,7 @@ from config import (
     REQUEST_TIMEOUT,
     freshservice_session,
 )
+from agent_resolver import get_group_name
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,9 @@ class TicketContext:
     notes_incomplete: bool
 
 
+@lru_cache(maxsize=1)
 def load_category_tree(path: Path | str = Path("categories.json")) -> dict:
+    """Load category tree with caching. Cache is cleared when path changes."""
     path = Path(path)
     if not path.exists():
         return {}
@@ -69,8 +72,9 @@ def gather_ticket_contexts(
     Freshservice API call fails we fall back to a lightweight version built
     from the search metadata so the downstream pipeline keeps running.
     The limit is capped by MAX_SIMILAR_TICKETS to avoid excessive token usage.
+    
+    Uses parallel API calls to improve performance while respecting rate limits.
     """
-    contexts: List[TicketContext] = []
     session = freshservice_session()
     safe_limit = MAX_SIMILAR_TICKETS if limit is None else max(0, limit)
     if safe_limit > MAX_SIMILAR_TICKETS:
@@ -82,18 +86,48 @@ def gather_ticket_contexts(
         )
         safe_limit = MAX_SIMILAR_TICKETS
 
+    # Collect ticket IDs with their metadata for parallel processing
+    tickets_to_fetch: List[tuple[int, str, dict, float]] = []
     for doc, meta, dist in results:
-        if len(contexts) >= safe_limit:
+        if len(tickets_to_fetch) >= safe_limit:
             break
         ticket_id = meta.get("ticket_id")
-        if not ticket_id:
-            continue
-        try:
-            ticket_ctx = _fetch_ticket_context(session, int(ticket_id), dist)
-        except Exception:
-            ticket_ctx = _fallback_ticket_context(doc, meta, dist)
-        contexts.append(ticket_ctx)
-
+        if ticket_id:
+            try:
+                tickets_to_fetch.append((int(ticket_id), doc, meta, dist))
+            except (ValueError, TypeError):
+                continue
+    
+    if not tickets_to_fetch:
+        return []
+    
+    # Use parallel execution with limited concurrency to respect rate limits
+    # Limit to 5 concurrent requests to avoid overwhelming the API
+    max_workers = min(5, len(tickets_to_fetch))
+    contexts: List[TicketContext] = []
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all fetch tasks
+        future_to_ticket = {
+            executor.submit(_fetch_ticket_context, session, ticket_id, dist): (doc, meta, dist)
+            for ticket_id, doc, meta, dist in tickets_to_fetch
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_ticket):
+            doc, meta, dist = future_to_ticket[future]
+            try:
+                ticket_ctx = future.result()
+                contexts.append(ticket_ctx)
+            except Exception as exc:
+                logger.debug(f"Failed to fetch ticket context: {exc}")
+                # Fallback to metadata-based context
+                ticket_ctx = _fallback_ticket_context(doc, meta, dist)
+                contexts.append(ticket_ctx)
+    
+    # Sort by distance to maintain order (parallel execution may complete out of order)
+    contexts.sort(key=lambda ctx: ctx.distance)
+    
     return contexts
 
 
@@ -153,7 +187,7 @@ def _build_context_from_api(session, ticket: dict, conversations: list, distance
             group_id_int = None
         else:
             if not group_name:
-                group_name = _resolve_group_name(session, group_id_int)
+                group_name = get_group_name(group_id_int)
     else:
         group_id_int = None
 
@@ -228,10 +262,11 @@ def _fallback_ticket_context(doc: str, meta: dict, distance: float) -> TicketCon
 
 
 def _clean_text(raw: str) -> str:
+    """Clean HTML text to plain text."""
     if not raw:
         return ""
-    soup = BeautifulSoup(raw, "html.parser")
-    text = soup.get_text(separator=" ", strip=True)
+    from text_cleaning import html_to_text
+    text = html_to_text(raw)
     return " ".join(text.split())
 
 
@@ -255,30 +290,3 @@ def _safe_int(value) -> Optional[int]:
         return None
 
 
-def _resolve_group_name(session, group_id: int) -> Optional[str]:
-    if group_id in _GROUP_NAME_CACHE:
-        return _GROUP_NAME_CACHE[group_id]
-
-    url = f"{FRESHSERVICE_BASE_URL}/groups/{group_id}"
-    attempts = 3
-    for attempt in range(attempts):
-        try:
-            resp = session.get(url, timeout=REQUEST_TIMEOUT)
-            if resp.status_code in (429, 503) and attempt < attempts - 1:
-                time.sleep(RATE_LIMIT_SLEEP * (attempt + 1))
-                continue
-            resp.raise_for_status()
-            name = ((resp.json() or {}).get("group", {}) or {}).get("name")
-            name = _safe_trim(name) or str(group_id)
-            _GROUP_NAME_CACHE[group_id] = name
-            return name
-        except Exception as exc:
-            logger.debug(f"Group lookup failed for {group_id}: {exc}")
-            time.sleep(RATE_LIMIT_SLEEP * (attempt + 1))
-
-    fallback = str(group_id)
-    _GROUP_NAME_CACHE[group_id] = fallback
-    return fallback
-
-
-_GROUP_NAME_CACHE: Dict[int, str] = {}

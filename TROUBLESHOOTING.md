@@ -21,8 +21,8 @@ python start_app.py --port 8503
 # Run system diagnostics only
 python start_app.py --diagnostics-only
 
-# Run comprehensive troubleshooting
-python troubleshoot.py
+# Run comprehensive troubleshooting (via diagnostics)
+python start_app.py --diagnostics-only
 ```
 
 ## 🚨 Common Issues & Solutions
@@ -123,7 +123,7 @@ python start_app.py --port 8503
 ```bash
 # Fix permissions
 chmod -R 755 .
-chmod +x start_app.py troubleshoot.py
+chmod +x start_app.py
 
 # Or run with sudo (not recommended)
 sudo python start_app.py
@@ -258,9 +258,9 @@ print('OpenAI API: Working')
 
 If you're still having issues:
 
-1. **Run the troubleshooting script:**
+1. **Run system diagnostics:**
    ```bash
-   python troubleshoot.py
+   python start_app.py --diagnostics-only
    ```
 
 2. **Check the logs:**

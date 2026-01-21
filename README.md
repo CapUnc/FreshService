@@ -13,7 +13,6 @@ A powerful semantic search tool for Freshservice tickets that enables IT help de
 - **Web UI**: Streamlit-based interface with debug mode and AI toggles
 - **✨ On-Demand AI Guidance**: Intelligent recommendations analyzing all notes from similar tickets, suggesting questions, referencing external knowledge bases, and providing context-aware solutions
 - **CLI Interface**: Command-line tool for power users
-- **Vision Helper**: Extract error messages from screenshots using OpenAI Vision
 - **🔧 Error Handling**: Comprehensive diagnostics and troubleshooting tools
 - **Smart Startup**: Automated system validation and health checks
 
@@ -103,7 +102,6 @@ python start_app.py --diagnostics-only
 - `OPENAI_EMBEDDING_MODEL`: Embedding model (default: `text-embedding-3-small`)
 - `OPENAI_GUIDANCE_MODEL`: Model used for AI guidance (default: `gpt-4o-mini`)
 - `OPENAI_SUMMARIZER_MODEL`: Model used for ticket summaries & query expansion (defaults to `OPENAI_GUIDANCE_MODEL`)
-- `OPENAI_VISION_MODEL`: Vision model (default: `gpt-4o-mini`)
 
 #### ChromaDB Configuration
 - `CHROMA_DB_PATH`: Database path (default: `./chroma_db`)
@@ -201,17 +199,6 @@ This will:
 - Generate embeddings using OpenAI
 - Store in ChromaDB for fast retrieval
 
-### Vision Helper
-
-Extract error messages from ticket screenshots:
-```bash
-python extract_error_messages.py --ticket 4295
-```
-
-Options:
-- `--save`: Save processed images for QA
-- `--model`: Override vision model
-
 ## 🎯 Search Strategies
 
 ### Distance Thresholds
@@ -241,16 +228,18 @@ The system automatically categorizes tickets:
 ## 🔍 Advanced Features
 
 ### Text Cleaning
+- Centralized text processing utilities in `text_cleaning.py`
 - Removes email signatures and reply chains
-- Strips HTML formatting
+- HTML to text conversion (`html_to_text()`)
 - Normalizes whitespace
 - Preserves technical content
 
 ### Agent Resolution
-- Resolves agent IDs to names
-- Handles group assignments
-- Caches agent information
-- Fallback to "Unknown" for missing data
+- Unified agent and group name resolution via `agent_resolver.py`
+- Resolves agent IDs to names with intelligent caching (`@lru_cache`)
+- Handles group assignments with consistent error handling
+- Automatic retry logic with rate limit respect
+- Fallback to "Unassigned" for None, "Unknown" for errors
 
 ### Metadata Enrichment
 - Full category paths (Category → Subcategory → Item)
@@ -261,12 +250,6 @@ The system automatically categorizes tickets:
 ## 🚨 Troubleshooting
 
 ### Smart Troubleshooting Tools
-
-#### Interactive Troubleshooting
-```bash
-python troubleshoot.py
-```
-This provides an interactive menu to fix common issues automatically.
 
 #### System Diagnostics
 ```bash
@@ -308,6 +291,13 @@ pip install chromadb==0.4.22
 
 ### Performance Optimization
 
+#### Code Efficiency Improvements
+- **Unified Utilities**: Consolidated HTML parsing and agent/group resolution
+- **Intelligent Caching**: Category tree and agent names cached with `@lru_cache`
+- **Session Reuse**: HTTP sessions reused in Streamlit (via `@st.cache_resource`)
+- **Parallel Processing**: Ticket context fetching uses parallel API calls (max 5 concurrent)
+- **Reduced Duplication**: ~250 lines of duplicate code eliminated
+
 #### AI Enhancement Benefits
 - **Improved Results**: +11% more comprehensive search results
 - **Better Relevance**: AI expands technical terms and focuses on core issues
@@ -338,19 +328,28 @@ pip install chromadb==0.4.22
 ```
 FreshService/
 ├── app.py                    # Streamlit web interface
-├── config.py                # Configuration and API clients
-├── freshservice.py          # Data ingestion script
-├── search_tickets.py        # CLI search interface
-├── ai_summarizer.py         # AI-powered ticket summarization
-├── extract_error_messages.py # Vision helper
-├── text_cleaning.py         # Text preprocessing
-├── start_app.py             # Smart startup script
-├── troubleshoot.py          # Interactive troubleshooting tool
-├── debug_utils.py           # System diagnostics and error handling
-├── requirements.txt         # Python dependencies
-├── api.env                  # Environment configuration
-├── chroma_db/               # ChromaDB storage
-└── ticket_images/           # Screenshot storage
+├── config.py                 # Configuration and API clients
+├── freshservice.py           # Data ingestion script
+├── search_tickets.py         # CLI search interface
+├── search_intent.py          # Query intent detection
+├── search_context.py         # Ticket context gathering (with parallel API calls)
+├── ai_summarizer.py          # AI-powered ticket summarization
+├── ai_recommendations.py     # AI guidance generation
+├── improved_ai_prompt.py     # AI prompt templates
+├── agent_resolver.py         # Unified agent/group name resolution
+├── text_cleaning.py          # Text preprocessing & HTML conversion
+├── debug_utils.py            # System diagnostics and error handling
+├── start_app.py              # Smart startup script
+├── maintenance/              # Maintenance utilities
+│   └── categories.py         # Category export tool
+├── tests/                    # Test suite
+│   ├── test_search_intent.py
+│   ├── test_relevance_filters.py
+│   └── test_ai_summarizer.py
+├── requirements.txt          # Python dependencies
+├── api.env                   # Environment configuration
+├── chroma_db/                # ChromaDB storage
+└── ticket_images/            # Screenshot storage
 ```
 
 ## 🤝 Contributing
@@ -375,5 +374,5 @@ For technical support or questions:
 ---
 
 **Last Updated**: January 2025  
-**Version**: 2.0.0  
-**Status**: Production Ready with AI Enhancement ✅
+**Version**: 2.1.0  
+**Status**: Production Ready with AI Enhancement & Performance Optimizations ✅
