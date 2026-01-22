@@ -133,6 +133,7 @@ def generate_guidance(
     # Debug logging for prompt verification handled by prompt_logger above.
 
     openai.api_key = OPENAI_API_KEY
+    
     try:
         response = openai.ChatCompletion.create(
             model=model,
@@ -142,8 +143,6 @@ def generate_guidance(
     except Exception as exc:
         logger.error("OpenAI guidance call failed: %s", exc)
         raise
-
-
 
     content = response.choices[0].message["content"].strip()
     parsed = None

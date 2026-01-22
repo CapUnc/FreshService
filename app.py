@@ -378,6 +378,10 @@ def _render_unassigned_tickets_dashboard() -> None:
             _render_unassigned_ticket_row(ticket)
             
     except Exception as e:
+        
+        # Re-raise RerunException - it's used by Streamlit to trigger reruns
+        if type(e).__name__ == "RerunException":
+            raise
         st.error(f"❌ **Failed to fetch unassigned tickets**: {str(e)}")
         logger.error(f"Error fetching unassigned tickets: {e}")
         logger.error(traceback.format_exc())

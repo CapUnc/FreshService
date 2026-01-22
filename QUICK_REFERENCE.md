@@ -10,6 +10,15 @@ streamlit run app.py --server.port 8501
 ```
 **Access**: http://localhost:8501
 
+### Unassigned Tickets Dashboard
+- **Access**: Leave search box empty on home page
+- **Features**: View all open, unassigned incident tickets in compact 3-line format
+- **Actions**: 
+  - 🔗 Open ticket in Freshservice
+  - 🔍 Search for similar tickets
+- **Refresh**: Click "🔄 Refresh" button to update list
+- **Caching**: Results cached for 5 minutes
+
 ### CLI Search Commands
 ```bash
 # Free text search
