@@ -95,7 +95,7 @@ python start_app.py --diagnostics-only
 - `FRESHSERVICE_PORTAL_DOMAIN`: Optional custom portal host for ticket links (e.g., `helpdesk.cuningham.com`)
 - `FRESHSERVICE_API_KEY`: Your Freshservice API key
 - `REQUEST_TIMEOUT_SECONDS`: API request timeout (default: 30)
-- `RATE_LIMIT_SLEEP_SECONDS`: Rate limiting delay (default: 0.1)
+- `RATE_LIMIT_SLEEP_SECONDS`: Rate limiting delay between API calls (default: 60)
 - `FRESHSERVICE_TICKET_URL_TEMPLATE`: Optional override for ticket deep links (default: `https://{domain}/a/tickets/{ticket_id}`)
 
 #### OpenAI Configuration
@@ -113,6 +113,8 @@ python start_app.py --diagnostics-only
 - `SEARCH_MAX_DISTANCE`: Default similarity threshold (default: 0.55)
 - `SEARCH_MAX_DISPLAY`: Results to display (default: 5)
 - `USE_AI_SUMMARY`: Enable AI summary seeding by default (default: 0)
+- `MAX_SIMILAR_TICKETS`: Maximum number of similar tickets to analyze for AI guidance (default: 5)
+- `LOG_GUIDANCE_PROMPT`: Enable debug logging for AI guidance prompts (set to `1` to enable, default: disabled)
 
 #### Ingest Configuration
 - `INGEST_STATUS_CODE`: Ticket status filter (default: 5 = Closed incidents)
