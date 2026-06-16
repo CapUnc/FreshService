@@ -7,7 +7,6 @@ import logging
 import os
 import time
 from collections import Counter
-from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 from config import (
@@ -190,27 +189,15 @@ def _triples(res) -> List[Tuple[str, dict, float]]:
 # --------------------------------
 # Assigned agent resolution (responder_id → name), with rate limit resilience
 # --------------------------------
-@lru_cache(maxsize=8192)
-def _fetch_ticket_responder_id(ticket_id: int) -> Optional[int]:
-    sess = shared_freshservice_session()
-    try:
-        r = sess.get(f"{FRESHSERVICE_BASE_URL}/tickets/{ticket_id}", timeout=REQUEST_TIMEOUT)
-        r.raise_for_status()
-        t = (r.json() or {}).get("ticket", {}) or {}
-        rid = t.get("responder_id")
-        try:
-            return int(rid) if rid is not None else None
-        except Exception:
-            return None
-    except Exception:
-        return None
-
-
 def _resolve_assigned_agent(meta: dict) -> dict:
     """
-    Ensure meta['responder_name'] reflects the assigned agent (responder_id).
-    If missing/Unknown, look up responder_id (from meta or fresh /tickets/{id})
-    and then fetch /agents/{id} to resolve a name.
+    Ensure meta['responder_name'] reflects the assigned agent.
+
+    Resolves the name from the responder_id already present in the search
+    metadata (populated at ingest). We intentionally do NOT re-fetch the ticket
+    to discover a missing responder_id: this runs over every retrieved result,
+    so a per-result ticket GET would create an N+1 that is slow and
+    rate-limit-prone during search. get_agent_name() is itself cached.
     """
     out = dict(meta)
     name = (out.get("responder_name") or "").strip()
@@ -218,20 +205,10 @@ def _resolve_assigned_agent(meta: dict) -> dict:
         return out
 
     rid = out.get("responder_id")
-    rid_int: Optional[int] = None
     try:
-        rid_int = int(rid) if rid is not None else None
+        rid_int: Optional[int] = int(rid) if rid is not None else None
     except Exception:
         rid_int = None
-
-    if rid_int is None:
-        tid = out.get("ticket_id")
-        try:
-            tid_int = int(tid)
-        except Exception:
-            tid_int = None
-        if tid_int is not None:
-            rid_int = _fetch_ticket_responder_id(tid_int)
 
     if rid_int is not None:
         resolved = get_agent_name(rid_int).strip()

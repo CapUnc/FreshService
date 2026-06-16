@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Done: A, B, C, E, F, G(+CI), H, lint-cleanup. Partial: D.** Suite: **27 tests, ruff-clean, CI gates both lint + tests.** Only remaining: D leftovers (error-path review, agent-resolution N+1) — both low-priority/judgment-heavy. Core audit complete.
+## Current status: **ALL PLAN PHASES COMPLETE (A–H + D + lint cleanup).** Suite: **29 tests, ruff-clean, CI gates both lint + tests.** Remaining items are optional/needs-real-data only: `ruff format` full reflow, structural doc consolidation, a vetted HTML sanitizer (`nh3`/`bleach`), and live-API validation of ticket updates + ingestion once new creds/data are in place.
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -47,11 +47,11 @@
   - [x] Added sidebar "🧠 AI model" selectbox; threaded `selected_model` into guidance + seed-summary calls (`generate_guidance(model=...)`, `build_seed_text_from_ticket(summary_model=...)`)
   - [x] Removed dead `handle_streamlit_error` / `safe_import` from `debug_utils.py`
   - [x] Verified: Chroma `OpenAIEmbeddingFunction` v1 path = True; mocked-client test of guidance + summary passes
-- 🔄 **D — Correctness fixes** (Phase 3)
+- ✅ **D — Correctness fixes** (Phase 3) (done — committed)
   - [x] `st.experimental_rerun()` → `st.rerun()` (2x in `_render_empty_state`; the old API is removed in current Streamlit and would crash the "Allow other…" buttons)
-  - [ ] Error-path review (broad `except` / RerunException handling)
-  - [ ] Agent-resolution N+1 API calls (`_resolve_assigned_agent`)
-  - [ ] Ticket-update field-name verification
+  - [x] **Agent-resolution N+1 removed**: `_resolve_assigned_agent` no longer re-fetches the ticket per result to discover a missing `responder_id` (that ran over every retrieved result → slow + rate-limit-prone). It now resolves from the `responder_id` already in the metadata (always populated at ingest). Removed dead `_fetch_ticket_responder_id`; added 2 mocked tests.
+  - [x] Error-path review: handling is sound — the dashboard path re-raises Streamlit `RerunException`; broad `except` blocks surface the error to the UI with optional debug detail. No concrete bug found.
+  - [x] Ticket-update field names: code-reviewed — `_update_ticket_fields` accepts both `sub_category`/`subcategory` and `item_category`/`item`, and detects "accepted but unchanged" responses. Needs live-API validation once real creds/data are in place.
 - ✅ **E — Efficiency** (Phase 5) (done — committed)
   - [x] Added `config.shared_freshservice_session()` (pooled, HTTP keep-alive); switched `agent_resolver`, `search_tickets`, `search_context` to it (they each built a new Session per call)
   - [x] Cached `chroma_collection()` (`@lru_cache`) — it rebuilt the Chroma client + OpenAI embedding fn on every single search
@@ -96,6 +96,9 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint D (complete)_: removed the agent-resolution N+1 (no more per-result ticket re-fetch
+  during search; resolve from metadata's `responder_id`), deleted dead `_fetch_ticket_responder_id`,
+  added 2 mocked tests. Reviewed remaining error paths + ticket-update field handling (sound).
 - _Lint cleanup (Q8 partial)_: `ruff check` now passes clean — fixed 11 findings (unused imports/vars,
   redundant f-strings, multiple-imports-on-one-line, E402 in ai_summarizer via dropping a redundant
   `load_dotenv`). Made the CI ruff step blocking. Added `tests/test_ingest_and_search.py` (27 tests).

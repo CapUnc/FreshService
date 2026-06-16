@@ -2,6 +2,7 @@
 
 import math
 
+import search_tickets
 from freshservice import sanitize_metadata, _coerce_value
 from search_tickets import summarize, _triples
 
@@ -51,3 +52,23 @@ def test_triples_skips_none_distances():
     assert len(out) == 1
     assert out[0][0] == "d1"
     assert out[0][2] == 0.1
+
+
+def test_resolve_assigned_agent_keeps_known_name_without_network(monkeypatch):
+    # A known name short-circuits and must NOT trigger an agent lookup.
+    calls = {"n": 0}
+
+    def _boom(_rid):
+        calls["n"] += 1
+        return "should-not-be-called"
+
+    monkeypatch.setattr(search_tickets, "get_agent_name", _boom)
+    out = search_tickets._resolve_assigned_agent({"responder_name": "Alice", "responder_id": 5})
+    assert out["responder_name"] == "Alice"
+    assert calls["n"] == 0
+
+
+def test_resolve_assigned_agent_resolves_from_metadata_responder_id(monkeypatch):
+    monkeypatch.setattr(search_tickets, "get_agent_name", lambda rid: "Resolved Name")
+    out = search_tickets._resolve_assigned_agent({"responder_name": "Unknown", "responder_id": 7})
+    assert out["responder_name"] == "Resolved Name"
