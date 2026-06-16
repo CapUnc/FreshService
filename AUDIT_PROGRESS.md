@@ -47,7 +47,11 @@
   - [x] Added sidebar "🧠 AI model" selectbox; threaded `selected_model` into guidance + seed-summary calls (`generate_guidance(model=...)`, `build_seed_text_from_ticket(summary_model=...)`)
   - [x] Removed dead `handle_streamlit_error` / `safe_import` from `debug_utils.py`
   - [x] Verified: Chroma `OpenAIEmbeddingFunction` v1 path = True; mocked-client test of guidance + summary passes
-- ⬜ **D — Correctness fixes** (Phase 3): `st.experimental_rerun` → `st.rerun`, error-path review, agent N+1
+- 🔄 **D — Correctness fixes** (Phase 3)
+  - [x] `st.experimental_rerun()` → `st.rerun()` (2x in `_render_empty_state`; the old API is removed in current Streamlit and would crash the "Allow other…" buttons)
+  - [ ] Error-path review (broad `except` / RerunException handling)
+  - [ ] Agent-resolution N+1 API calls (`_resolve_assigned_agent`)
+  - [ ] Ticket-update field-name verification
 - ⬜ **E — Efficiency** (Phase 5): shared session/client reuse, faster reingest
 - ⬜ **F — Security** (Phase 6): HTML/XSS escaping, secret-history scan
 - ⬜ **G — Tests/CI** (Phase 7a): mock external calls, expand coverage, CI

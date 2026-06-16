@@ -1134,11 +1134,11 @@ def _render_empty_state(require_token: bool, require_category: bool) -> None:
     if require_token:
         if cols[0].button("Allow other software terms"):
             st.session_state["require_token"] = False
-            st.experimental_rerun()
+            st.rerun()
     if require_category:
         if cols[1].button("Allow other categories"):
             st.session_state["require_category"] = False
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ----------------------------
