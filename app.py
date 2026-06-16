@@ -27,6 +27,7 @@ try:
         REQUEST_TIMEOUT,
         FRESHSERVICE_BASE_URL,
         RATE_LIMIT_SLEEP,
+        available_models,
         freshservice_session,
         get_ticket_url,
     )
@@ -1173,6 +1174,15 @@ with st.sidebar:
         key="ai_summary"
     )
 
+    model_options = available_models()
+    selected_model = st.selectbox(
+        "🧠 AI model",
+        options=model_options,
+        index=0,
+        help="OpenAI model used for AI guidance and ticket summaries.",
+        key="ai_model",
+    )
+
     require_token_match = st.checkbox(
         "Require exact software terms",
         value=st.session_state.get("require_token", False),
@@ -1233,9 +1243,10 @@ if seed_tid:
     try:
         with st.spinner(f"Fetching ticket {seed_tid}..."):
             seed_text, seed_meta = build_seed_text_from_ticket(
-                seed_tid, 
+                seed_tid,
                 clean=clean_seed,
-                use_ai_summary=use_ai_summary
+                use_ai_summary=use_ai_summary,
+                summary_model=selected_model,
             )
         query_text = seed_text
     except Exception as e:
@@ -1284,6 +1295,7 @@ if st.session_state.get('guidance_refresh_requested'):
             seed_tid,
             clean=clean_seed,
             use_ai_summary=use_ai_summary,
+            summary_model=selected_model,
         ) if seed_tid else (None, None)
     except Exception as refresh_err:
         logger.warning('Failed to refresh seed ticket after update: %s', refresh_err)
@@ -1442,6 +1454,7 @@ if run_guidance:
                 similar_contexts=similar_contexts,
                 categories_tree=categories_tree,
                 detected_tokens=intent.tokens,
+                model=selected_model,
             )
             st.session_state["ai_guidance"] = {
                 "key": guidance_key,

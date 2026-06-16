@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Checkpoint A in progress**
+## Current status: **Checkpoints A + C done. Next: Checkpoint B (Nexus rebrand + config unification).**
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -37,12 +37,13 @@
   - [ ] Rename app title / docs / log file names to Nexus
   - [ ] Unify Chroma collection default (`config.py` `freshservice_core` → `nexus_tickets`); align `debug_utils.py`
   - [ ] Fix doc factual drift (ticket counts, version/date, file references)
-- ⬜ **C — OpenAI 1.x migration + model picker**
-  - [ ] Bump `openai` to 1.x in requirements
-  - [ ] Migrate `ai_recommendations.py`, `ai_summarizer.py`, `debug_utils.py` to `OpenAI()` client
-  - [ ] Add `config.available_models()` + sidebar model selector wired into guidance/summarizer
-  - [ ] Remove dead `handle_streamlit_error` / `safe_import` from `debug_utils.py`
-  - [ ] Verify ingestion/search still construct (Chroma `OpenAIEmbeddingFunction` auto-handles v1)
+- ✅ **C — OpenAI 1.x migration + model picker** (done — committed)
+  - [x] Pin `openai>=1.50,<2` (NOT 2.x: chromadb 0.4.22's embedding fn only detects the `1.x` client via `version.startswith("1.")`; under 2.x it falls back to the removed `openai.Embedding` and ingestion would crash). Installed 1.109.1.
+  - [x] Migrated `ai_recommendations.py`, `ai_summarizer.py`, `debug_utils.py` to the modern `OpenAI()` client (`chat.completions.create` / `embeddings.create`, `.message.content`)
+  - [x] Added shared `config.openai_client()` + `config.available_models()` (env `OPENAI_AVAILABLE_MODELS`)
+  - [x] Added sidebar "🧠 AI model" selectbox; threaded `selected_model` into guidance + seed-summary calls (`generate_guidance(model=...)`, `build_seed_text_from_ticket(summary_model=...)`)
+  - [x] Removed dead `handle_streamlit_error` / `safe_import` from `debug_utils.py`
+  - [x] Verified: Chroma `OpenAIEmbeddingFunction` v1 path = True; mocked-client test of guidance + summary passes
 - ⬜ **D — Correctness fixes** (Phase 3): `st.experimental_rerun` → `st.rerun`, error-path review, agent N+1
 - ⬜ **E — Efficiency** (Phase 5): shared session/client reuse, faster reingest
 - ⬜ **F — Security** (Phase 6): HTML/XSS escaping, secret-history scan
@@ -64,6 +65,10 @@
      do not weaken assertions blindly. The 3 tests in `test_relevance_filters.py` pass.
 
 ## Changelog (most recent first)
+- _Checkpoint C_: migrated to modern OpenAI SDK (`openai>=1.50,<2`, installed 1.109.1) across
+  `ai_recommendations`, `ai_summarizer`, `debug_utils`; added shared `openai_client()` +
+  `available_models()` in config; added in-app model picker wired into guidance + summaries;
+  removed 2 dead helpers from `debug_utils`. Verified via mocked client (no live API).
 - _Checkpoint A_: foundations — pinned deps (`requirements*.txt` + lock), `api.env.example`,
   removed dead imports in `app.py`, deleted 4 transient docs, removed local clutter, wiped `chroma_db/`,
   added `AUDIT_PLAN.md` + this tracker. Discovered Finding #1.

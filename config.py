@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -66,6 +67,8 @@ OPENAI_API_KEY = _getenv("OPENAI_API_KEY", required=True).strip()
 OPENAI_EMBEDDING_MODEL = _getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small").strip()
 OPENAI_GUIDANCE_MODEL = _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini").strip()
 OPENAI_SUMMARIZER_MODEL = _getenv("OPENAI_SUMMARIZER_MODEL", _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini")).strip()
+# Comma-separated list of models offered in the in-app picker (blank => sensible default).
+OPENAI_AVAILABLE_MODELS = _getenv("OPENAI_AVAILABLE_MODELS", "").strip()
 
 
 # ---------------------------------------
@@ -105,6 +108,35 @@ def embedding_function() -> OpenAIEmbeddingFunction:
     Uses OpenAI's text-embedding-3-small by default (cost-effective).
     """
     return OpenAIEmbeddingFunction(api_key=OPENAI_API_KEY, model_name=OPENAI_EMBEDDING_MODEL)
+
+
+@lru_cache(maxsize=1)
+def openai_client():
+    """Return a shared OpenAI client (modern >=1.x SDK), created once and reused."""
+    from openai import OpenAI
+
+    return OpenAI(api_key=OPENAI_API_KEY)
+
+
+def available_models() -> list[str]:
+    """Models offered in the in-app picker.
+
+    Sourced from the comma-separated OPENAI_AVAILABLE_MODELS env var, or a sensible
+    default list. The configured guidance model is always included and listed first.
+    """
+    if OPENAI_AVAILABLE_MODELS:
+        models = [m.strip() for m in OPENAI_AVAILABLE_MODELS.split(",") if m.strip()]
+    else:
+        models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"]
+
+    ordered = [OPENAI_GUIDANCE_MODEL, *models]
+    seen: set[str] = set()
+    unique: list[str] = []
+    for name in ordered:
+        if name and name not in seen:
+            seen.add(name)
+            unique.append(name)
+    return unique
 
 
 def chroma_collection(name: Optional[str] = None):

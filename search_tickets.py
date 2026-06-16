@@ -82,6 +82,7 @@ def build_seed_text_from_ticket(
     *,
     clean: bool = True,
     use_ai_summary: Optional[bool] = None,
+    summary_model: Optional[str] = None,
 ) -> Tuple[str, Dict[str, str]]:
     """
     Compose query text from subject + description (optionally cleaned to match embedding).
@@ -97,8 +98,9 @@ def build_seed_text_from_ticket(
     if use_ai_summary:
         try:
             from ai_summarizer import create_comprehensive_ticket_embedding_text
+            summary_kwargs = {"model": summary_model} if summary_model else {}
             seed_text = create_comprehensive_ticket_embedding_text(
-                subject, desc_text_clean, ticket_id
+                subject, desc_text_clean, ticket_id, **summary_kwargs
             )
             ai_enhanced = True
         except Exception as e:

@@ -6,7 +6,7 @@
 
 streamlit==1.37.0
 chromadb==0.4.22
-openai==0.28.1          # NOTE: migration to openai>=1.x is in progress (see AUDIT_PLAN.md / AUDIT_PROGRESS.md)
+openai>=1.50,<2         # pinned <2: chromadb 0.4.22's embedding fn only detects the 1.x client
 requests==2.32.3
 beautifulsoup4==4.12.3
 python-dotenv==1.0.1
