@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from config import (
     chroma_collection,
-    freshservice_session,
+    shared_freshservice_session,
     FRESHSERVICE_BASE_URL,
     REQUEST_TIMEOUT,
     SEARCH_MAX_DISTANCE,
@@ -44,7 +44,7 @@ def _fetch_ticket_subject_desc(ticket_id: int) -> Tuple[str, str, str, Dict[str,
     Return (subject, description_text_raw, description_html_raw, ticket_payload).
     Prefers server-side plain text; falls back to HTML→text if needed.
     """
-    s = freshservice_session()
+    s = shared_freshservice_session()
     attempts = 3
     for attempt in range(attempts):
         try:
@@ -192,7 +192,7 @@ def _triples(res) -> List[Tuple[str, dict, float]]:
 # --------------------------------
 @lru_cache(maxsize=8192)
 def _fetch_ticket_responder_id(ticket_id: int) -> Optional[int]:
-    sess = freshservice_session()
+    sess = shared_freshservice_session()
     try:
         r = sess.get(f"{FRESHSERVICE_BASE_URL}/tickets/{ticket_id}", timeout=REQUEST_TIMEOUT)
         r.raise_for_status()

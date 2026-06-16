@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Done so far: A, C, B, D(partial), G(partial).** Remaining: D (error paths, agent N+1), E (efficiency), F (security/XSS), G-CI, H (deep docs + diagram).
+## Current status: **Done so far: A, C, B, D(partial), G(partial), E.** Remaining: D (error paths, agent N+1), F (security/XSS), G-CI, H (deep docs + diagram).
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -52,7 +52,12 @@
   - [ ] Error-path review (broad `except` / RerunException handling)
   - [ ] Agent-resolution N+1 API calls (`_resolve_assigned_agent`)
   - [ ] Ticket-update field-name verification
-- ⬜ **E — Efficiency** (Phase 5): shared session/client reuse, faster reingest
+- ✅ **E — Efficiency** (Phase 5) (done — committed)
+  - [x] Added `config.shared_freshservice_session()` (pooled, HTTP keep-alive); switched `agent_resolver`, `search_tickets`, `search_context` to it (they each built a new Session per call)
+  - [x] Cached `chroma_collection()` (`@lru_cache`) — it rebuilt the Chroma client + OpenAI embedding fn on every single search
+  - [x] Reingest dedup: prefetch existing ids once (`coll.get(include=[])`) instead of a DB round-trip per ticket; removed the now-dead `_exists`
+  - [x] Added a session-reuse test; suite now **20 passing**
+  - Note: `freshservice.py` ingest keeps its own one-shot session (agent/group lookups inside it go through the shared pool); `app.py` keeps its `@st.cache_resource` session for the UI.
 - ⬜ **F — Security** (Phase 6): HTML/XSS escaping, secret-history scan
 - 🔄 **G — Tests/CI** (Phase 7a)
   - [x] Fixed the 2 stale tests in `test_search_intent.py` (resolves Finding #1)
@@ -81,6 +86,9 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint E_: efficiency — pooled/shared Freshservice session across the hot search/ingest
+  paths, cached the Chroma collection (was rebuilt every search), and made reingest dedup O(1)
+  per ticket (prefetch ids) instead of one DB round-trip each. Removed dead `_exists`.
 - _Checkpoint G (partial)_: made the test suite trustworthy — fixed 2 stale tests, mocked the
   live-API summarizer test, added `text_cleaning` + `config` tests and `pytest.ini`. Suite is
   now 19 passing and fully offline (was: pytest not installed, 2 silently failing).

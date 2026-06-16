@@ -102,6 +102,18 @@ def freshservice_session() -> Session:
     return s
 
 
+@lru_cache(maxsize=1)
+def shared_freshservice_session() -> Session:
+    """Process-wide reusable Freshservice session.
+
+    Reuses one connection pool (HTTP keep-alive) across the many small
+    ticket/agent/group lookups performed during search and ingestion. requests'
+    underlying urllib3 pool is thread-safe, so this is safe to share across the
+    context-fetch thread pool in search_context.
+    """
+    return freshservice_session()
+
+
 def embedding_function() -> OpenAIEmbeddingFunction:
     """
     Embedding function for Chroma collections.
@@ -139,9 +151,12 @@ def available_models() -> list[str]:
     return unique
 
 
+@lru_cache(maxsize=4)
 def chroma_collection(name: Optional[str] = None):
     """
     Return a persistent Chroma collection at CHROMA_DB_PATH.
+    Cached per name so the client + embedding function are built once and reused
+    across searches (previously rebuilt on every query).
     If it doesn't exist yet, create it with the configured embedding function.
     """
     import logging

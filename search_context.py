@@ -17,7 +17,7 @@ from config import (
     MAX_SIMILAR_TICKETS,
     RATE_LIMIT_SLEEP,
     REQUEST_TIMEOUT,
-    freshservice_session,
+    shared_freshservice_session,
 )
 from agent_resolver import get_group_name
 
@@ -75,7 +75,7 @@ def gather_ticket_contexts(
     
     Uses parallel API calls to improve performance while respecting rate limits.
     """
-    session = freshservice_session()
+    session = shared_freshservice_session()
     safe_limit = MAX_SIMILAR_TICKETS if limit is None else max(0, limit)
     if safe_limit > MAX_SIMILAR_TICKETS:
         logger.warning(

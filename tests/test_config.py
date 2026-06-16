@@ -6,6 +6,7 @@ from config import (
     OPENAI_GUIDANCE_MODEL,
     available_models,
     normalise_freshservice_domain,
+    shared_freshservice_session,
 )
 
 
@@ -33,3 +34,8 @@ def test_available_models_lists_guidance_default_first_and_unique():
     assert isinstance(models, list) and models
     assert models[0] == OPENAI_GUIDANCE_MODEL
     assert len(models) == len(set(models))  # no duplicates
+
+
+def test_shared_session_is_reused():
+    # The pooled session must be the same object across calls (connection reuse).
+    assert shared_freshservice_session() is shared_freshservice_session()
