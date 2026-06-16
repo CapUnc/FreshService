@@ -69,7 +69,8 @@
   - [x] Converted `test_ai_summarizer.py` to a mocked unit test (no live API, real assertions)
   - [x] Added `tests/test_text_cleaning.py` + `tests/test_config.py`
   - [x] Added `pytest.ini`; suite now **19 passing, fully offline**
-  - [ ] CI (GitHub Actions: install pinned deps → ruff → pytest) — pending
+  - [x] CI (`.github/workflows/ci.yml`): Python 3.12, install `requirements-dev.txt`, `ruff check` (non-blocking until Q8), `pytest` with dummy env vars (config import needs them). Verified locally (plain `pytest` + env-only config import).
+  - [x] Added root `conftest.py` so the flat top-level modules import under the plain `pytest` console script (CI), not just `python -m pytest`.
   - [ ] Further coverage: `freshservice.sanitize_metadata`, `search_tickets` rerank/bucket, `agent_resolver` payload parsing
 - ⬜ **H — Docs overhaul** (Phase 7b): consolidate + rewrite to match reality, architecture diagram
 
@@ -91,6 +92,8 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint G-CI_: added GitHub Actions CI (ruff + pytest with dummy env) and a root
+  `conftest.py` so plain `pytest` resolves the flat top-level modules. Verified locally.
 - _Checkpoint F_: security — verified no secrets in git history; HTML-escaped all user-controlled
   data in `unsafe_allow_html` sinks; added a BeautifulSoup `sanitize_html()` for the raw
   requester-authored description render (+ tests). Recommend `nh3`/`bleach` for hardening.
