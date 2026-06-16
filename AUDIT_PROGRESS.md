@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Done: A, B, C, E, F, G(+CI), H. Partial: D.** Only remaining: D leftovers (error-path review, agent-resolution N+1) + optional extra test coverage. Core audit is essentially complete.
+## Current status: **Done: A, B, C, E, F, G(+CI), H, lint-cleanup. Partial: D.** Suite: **27 tests, ruff-clean, CI gates both lint + tests.** Only remaining: D leftovers (error-path review, agent-resolution N+1) — both low-priority/judgment-heavy. Core audit complete.
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -69,9 +69,9 @@
   - [x] Converted `test_ai_summarizer.py` to a mocked unit test (no live API, real assertions)
   - [x] Added `tests/test_text_cleaning.py` + `tests/test_config.py`
   - [x] Added `pytest.ini`; suite now **19 passing, fully offline**
-  - [x] CI (`.github/workflows/ci.yml`): Python 3.12, install `requirements-dev.txt`, `ruff check` (non-blocking until Q8), `pytest` with dummy env vars (config import needs them). Verified locally (plain `pytest` + env-only config import).
+  - [x] CI (`.github/workflows/ci.yml`): Python 3.12, install `requirements-dev.txt`, `ruff check` (**now blocking** after the lint cleanup), `pytest` with dummy env vars (config import needs them). Verified locally (plain `pytest` + env-only config import).
   - [x] Added root `conftest.py` so the flat top-level modules import under the plain `pytest` console script (CI), not just `python -m pytest`.
-  - [ ] Further coverage: `freshservice.sanitize_metadata`, `search_tickets` rerank/bucket, `agent_resolver` payload parsing
+  - [x] Further coverage: added `tests/test_ingest_and_search.py` — `freshservice._coerce_value`/`sanitize_metadata`, `search_tickets.summarize`/`_triples` (27 tests total)
 - ✅ **H — Docs accuracy pass + architecture diagram** (done — committed)
   - [x] Fixed stale stats/versions/footers across USER_GUIDE, QUICK_REFERENCE, API_DOCUMENTATION (titles → "Nexus", removed 3,660/3,947/6501 ticket counts, 93MB, Jan 2025, v1.0.0/v2.x)
   - [x] Updated old-SDK code snippets in TROUBLESHOOTING to the modern `OpenAI()` client
@@ -96,6 +96,10 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Lint cleanup (Q8 partial)_: `ruff check` now passes clean — fixed 11 findings (unused imports/vars,
+  redundant f-strings, multiple-imports-on-one-line, E402 in ai_summarizer via dropping a redundant
+  `load_dotenv`). Made the CI ruff step blocking. Added `tests/test_ingest_and_search.py` (27 tests).
+  (Full `ruff format` reflow remains optional.)
 - _Checkpoint H_: documentation accuracy pass — corrected stale stats/versions/footers across all
   user docs, modernized the OpenAI snippets in TROUBLESHOOTING, and added a mermaid architecture
   diagram + "How It Works" to the README.

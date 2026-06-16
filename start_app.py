@@ -7,7 +7,6 @@ import sys
 import os
 import subprocess
 import argparse
-from pathlib import Path
 
 def check_python_version():
     """Check if Python version is compatible."""
@@ -50,7 +49,7 @@ def check_dependencies():
             missing_packages.append(package_name)
     
     if missing_packages:
-        print(f"\n📦 Install missing packages:")
+        print("\n📦 Install missing packages:")
         print(f"   pip install {' '.join(missing_packages)}")
         return False
     
@@ -204,7 +203,7 @@ def main():
         return 0
     
     # Start the application
-    print(f"\n✅ All checks passed! Starting application...")
+    print("\n✅ All checks passed! Starting application...")
     
     if not start_streamlit(args.port, args.host):
         return 1

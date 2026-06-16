@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 from search_intent import (
-    QueryIntent,
     ResultSignals,
     annotate_result_with_tokens,
     extract_query_intent,

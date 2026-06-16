@@ -6,16 +6,12 @@
 import logging
 from functools import lru_cache
 from typing import Optional
-from dotenv import load_dotenv
 
 from improved_ai_prompt import (
     create_enhanced_system_message,
     create_enhanced_ticket_summary_prompt,
 )
-
-# Load environment early so config sees env vars
-load_dotenv('api.env') or load_dotenv()
-
+# config loads api.env on import, so env vars are available below.
 from config import OPENAI_SUMMARIZER_MODEL, openai_client
 
 logger = logging.getLogger(__name__)

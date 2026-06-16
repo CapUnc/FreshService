@@ -409,7 +409,9 @@ def summarize(results: List[Tuple[str, dict, float]]) -> dict:
 # (Optional) CLI for quick checks
 # --------------------------------
 if __name__ == "__main__":
-    import argparse, webbrowser, os as _os
+    import argparse
+    import webbrowser
+    import os as _os
 
     parser = argparse.ArgumentParser(description="Semantic search over Freshservice tickets.")
     parser.add_argument("query", nargs="*", help="Free text query. Omit if using --seed-ticket.")

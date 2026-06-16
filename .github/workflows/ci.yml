@@ -23,8 +23,6 @@ jobs:
 
       - name: Lint (ruff)
         run: ruff check .
-        # Non-blocking until the formatting pass (AUDIT_PLAN.md Q8) lands.
-        continue-on-error: true
 
       - name: Run tests
         run: pytest

@@ -1041,8 +1041,6 @@ def _process_pending_guidance_action(seed_tid: Optional[int]) -> None:
     st.session_state['guidance_refresh_requested'] = True
     st.session_state['guidance_panel_open'] = True
 
-    category_payload = pending.get('category_payload') or {}
-
     with st.spinner(f"Updating ticket #{ticket_id}..."):
         _update_ticket_fields(ticket_id, **update_kwargs)
 

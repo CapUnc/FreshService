@@ -7,7 +7,7 @@ import os
 import sys
 import traceback
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 
 import streamlit as st
@@ -177,7 +177,7 @@ class SystemDiagnostics:
 
             # Test the key with a minimal embeddings call (modern >=1.x SDK)
             client = OpenAI(api_key=api_key)
-            response = client.embeddings.create(
+            client.embeddings.create(
                 input="test",
                 model="text-embedding-3-small"
             )
