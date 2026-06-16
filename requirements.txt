@@ -1,0 +1,12 @@
+# Runtime dependencies for Nexus (Freshservice semantic search)
+# Pinned to known-good versions. Developed/tested on Python 3.12.
+#
+# For the exact, fully-resolved environment (including transitive deps) see
+# requirements.lock.txt. For dev/test tooling see requirements-dev.txt.
+
+streamlit==1.37.0
+chromadb==0.4.22
+openai==0.28.1          # NOTE: migration to openai>=1.x is in progress (see AUDIT_PLAN.md / AUDIT_PROGRESS.md)
+requests==2.32.3
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1

@@ -37,13 +37,8 @@ try:
     )
     from search_intent import extract_query_intent
     from search_context import gather_ticket_contexts, load_category_tree, TicketContext
-    from ai_recommendations import AIGuidance, generate_guidance
-    from debug_utils import (
-        SystemDiagnostics,
-        handle_streamlit_error,
-        display_system_status,
-        safe_import
-    )
+    from ai_recommendations import generate_guidance
+    from debug_utils import display_system_status
     IMPORTS_SUCCESSFUL = True
 except Exception as e:
     logger.error(f"Import error: {e}")
