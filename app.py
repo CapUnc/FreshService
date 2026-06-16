@@ -3,6 +3,7 @@
 # =========================
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -40,6 +41,7 @@ try:
     from search_context import gather_ticket_contexts, load_category_tree, TicketContext
     from ai_recommendations import generate_guidance
     from debug_utils import display_system_status
+    from text_cleaning import sanitize_html
     IMPORTS_SUCCESSFUL = True
 except Exception as e:
     logger.error(f"Import error: {e}")
@@ -156,6 +158,17 @@ if 'debug_mode' not in st.session_state:
 # ----------------------------
 # Helpers
 # ----------------------------
+def _esc(value: Any) -> str:
+    """HTML-escape a value before interpolating it into unsafe_allow_html markup.
+
+    Ticket fields (subject, category, group, description preview) and query tokens
+    are user-controlled, so they must be escaped to prevent HTML/script injection.
+    """
+    if value is None:
+        return ""
+    return html.escape(str(value), quote=True)
+
+
 def _ticket_url(tid: Optional[int]) -> Optional[str]:
     if not tid:
         return None
@@ -328,7 +341,7 @@ def _render_unassigned_ticket_row(ticket: Dict[str, Any]) -> None:
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             if ticket_url:
-                st.markdown(f'<a href="{ticket_url}" target="_blank" style="text-decoration: none; font-size: 0.9em;">🔗</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="{_esc(ticket_url)}" target="_blank" style="text-decoration: none; font-size: 0.9em;">🔗</a>', unsafe_allow_html=True)
         with btn_col2:
             if st.button("🔍", key=f"search_{ticket_id}", use_container_width=True, help="Search similar tickets"):
                 st.session_state["query"] = str(ticket_id)
@@ -560,7 +573,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             line1_cols = st.columns([1, 7, 1, 0.5])
             
             with line1_cols[0]:
-                st.markdown(f"<div class='compact-ticket'>#{ticket_display}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-ticket'>#{_esc(ticket_display)}</div>", unsafe_allow_html=True)
             
             with line1_cols[1]:
                 if url:
@@ -612,7 +625,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             line1_cols = st.columns([1, 7, 1, 0.5])
             
             with line1_cols[0]:
-                st.markdown(f"<div class='compact-ticket'>#{ticket_display}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-ticket'>#{_esc(ticket_display)}</div>", unsafe_allow_html=True)
             
             with line1_cols[1]:
                 if url:
@@ -631,7 +644,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             # Line 2: AI summary (compact preview) - no space above
             preview = _extract_preview_text(doc, subject, limit=100)
             if preview:
-                st.markdown(f"<div class='compact-summary-tight'>{preview}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-summary-tight'>{_esc(preview)}</div>", unsafe_allow_html=True)
 
 
 def _extract_preview_text(doc: str, subject: str, limit: int = 100) -> str:
@@ -1273,7 +1286,7 @@ if seed_meta:
             st.write(f"**Subject:** {seed_meta['subject'] or '—'}")
             st.caption("Original Freshservice description:")
             if seed_meta.get("description_html"):
-                st.markdown(seed_meta.get("description_html") or "—", unsafe_allow_html=True)
+                st.markdown(sanitize_html(seed_meta.get("description_html")) or "—", unsafe_allow_html=True)
             else:
                 st.write(seed_meta.get("description_raw") or "—")
 
@@ -1325,7 +1338,7 @@ try:
     with token_chip_container:
         if intent.tokens:
             chips = "".join(
-                f"<span class='chip chip-good'>{token}</span>" for token in sorted(intent.tokens)
+                f"<span class='chip chip-good'>{_esc(token)}</span>" for token in sorted(intent.tokens)
             )
             st.markdown(f"**Detected tokens:**<br>{chips}", unsafe_allow_html=True)
         elif require_token_match:

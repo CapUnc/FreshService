@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Done so far: A, C, B, D(partial), G(partial), E.** Remaining: D (error paths, agent N+1), F (security/XSS), G-CI, H (deep docs + diagram).
+## Current status: **Done so far: A, C, B, D(partial), G(partial), E, F.** Remaining: D (error paths, agent N+1), G-CI, H (deep docs + diagram).
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -58,7 +58,12 @@
   - [x] Reingest dedup: prefetch existing ids once (`coll.get(include=[])`) instead of a DB round-trip per ticket; removed the now-dead `_exists`
   - [x] Added a session-reuse test; suite now **20 passing**
   - Note: `freshservice.py` ingest keeps its own one-shot session (agent/group lookups inside it go through the shared pool); `app.py` keeps its `@st.cache_resource` session for the UI.
-- ⬜ **F — Security** (Phase 6): HTML/XSS escaping, secret-history scan
+- ✅ **F — Security** (Phase 6) (done — committed)
+  - [x] Secret-history scan: `api.env` never committed; no secrets anywhere in git history; `api.env` is gitignored ✅
+  - [x] Added `_esc()` (`html.escape`) and applied to user-controlled fields in the `unsafe_allow_html` sinks (ticket id, ticket link href, description preview, detected-token chips)
+  - [x] Added `text_cleaning.sanitize_html()` (BeautifulSoup: strips script/style/iframe/etc., `on*` handlers, `javascript:`/`data:`/`vbscript:` URLs); applied to the raw requester-authored "Original description" render
+  - [x] Added 3 sanitizer tests; suite now **23 passing**
+  - **Recommendation (decision):** the sanitizer is best-effort defense-in-depth. For stronger guarantees, add a vetted sanitizer (`nh3` or `bleach`). Static/numeric sinks (the CSS `<style>` block, KPI counts, relevance badges built from constants) were reviewed and left as-is.
 - 🔄 **G — Tests/CI** (Phase 7a)
   - [x] Fixed the 2 stale tests in `test_search_intent.py` (resolves Finding #1)
   - [x] Converted `test_ai_summarizer.py` to a mocked unit test (no live API, real assertions)
@@ -86,6 +91,9 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint F_: security — verified no secrets in git history; HTML-escaped all user-controlled
+  data in `unsafe_allow_html` sinks; added a BeautifulSoup `sanitize_html()` for the raw
+  requester-authored description render (+ tests). Recommend `nh3`/`bleach` for hardening.
 - _Checkpoint E_: efficiency — pooled/shared Freshservice session across the hot search/ingest
   paths, cached the Chroma collection (was rebuilt every search), and made reingest dedup O(1)
   per ticket (prefetch ids) instead of one DB round-trip each. Removed dead `_exists`.

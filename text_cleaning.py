@@ -77,6 +77,39 @@ def html_to_text(html: Optional[str]) -> str:
     return BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
 
 
+# --- Conservative HTML sanitization (defense-in-depth) ---
+_DANGEROUS_TAGS = ["script", "style", "iframe", "object", "embed", "link", "meta", "base", "form"]
+
+
+def sanitize_html(raw: Optional[str]) -> str:
+    """Strip dangerous tags/attributes from requester-authored ticket HTML.
+
+    Best-effort defense for rendering the original description with
+    unsafe_allow_html: removes script/style/iframe/etc., on* event handlers, and
+    javascript:/data:/vbscript: URLs. For stronger guarantees prefer a vetted
+    sanitizer such as nh3 or bleach.
+    """
+    if not raw:
+        return ""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(raw, "html.parser")
+    for tag in soup.find_all(_DANGEROUS_TAGS):
+        tag.decompose()
+    for tag in soup.find_all(True):
+        for attr in list(tag.attrs):
+            lowered = attr.lower()
+            value = tag.attrs.get(attr)
+            if lowered.startswith("on"):
+                del tag.attrs[attr]
+                continue
+            if lowered in {"href", "src", "xlink:href"}:
+                sval = (value if isinstance(value, str) else " ".join(value)).strip().lower()
+                if sval.startswith(("javascript:", "data:", "vbscript:")):
+                    del tag.attrs[attr]
+    return str(soup)
+
+
 # --- Public API ---
 def clean_description(raw: str) -> str:
     """Conservative clean; subject should not be passed here."""
