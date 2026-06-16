@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Done so far: A, C, B, D(partial), G(partial), E, F.** Remaining: D (error paths, agent N+1), G-CI, H (deep docs + diagram).
+## Current status: **Done: A, B, C, E, F, G(+CI), H. Partial: D.** Only remaining: D leftovers (error-path review, agent-resolution N+1) + optional extra test coverage. Core audit is essentially complete.
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -72,7 +72,11 @@
   - [x] CI (`.github/workflows/ci.yml`): Python 3.12, install `requirements-dev.txt`, `ruff check` (non-blocking until Q8), `pytest` with dummy env vars (config import needs them). Verified locally (plain `pytest` + env-only config import).
   - [x] Added root `conftest.py` so the flat top-level modules import under the plain `pytest` console script (CI), not just `python -m pytest`.
   - [ ] Further coverage: `freshservice.sanitize_metadata`, `search_tickets` rerank/bucket, `agent_resolver` payload parsing
-- ⬜ **H — Docs overhaul** (Phase 7b): consolidate + rewrite to match reality, architecture diagram
+- ✅ **H — Docs accuracy pass + architecture diagram** (done — committed)
+  - [x] Fixed stale stats/versions/footers across USER_GUIDE, QUICK_REFERENCE, API_DOCUMENTATION (titles → "Nexus", removed 3,660/3,947/6501 ticket counts, 93MB, Jan 2025, v1.0.0/v2.x)
+  - [x] Updated old-SDK code snippets in TROUBLESHOOTING to the modern `OpenAI()` client
+  - [x] Added a mermaid architecture diagram + "How It Works" to README
+  - [ ] Optional future: structural consolidation/merge of overlapping docs (content is now accurate; not yet merged)
 
 ---
 
@@ -92,6 +96,9 @@
      Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint H_: documentation accuracy pass — corrected stale stats/versions/footers across all
+  user docs, modernized the OpenAI snippets in TROUBLESHOOTING, and added a mermaid architecture
+  diagram + "How It Works" to the README.
 - _Checkpoint G-CI_: added GitHub Actions CI (ruff + pytest with dummy env) and a root
   `conftest.py` so plain `pytest` resolves the flat top-level modules. Verified locally.
 - _Checkpoint F_: security — verified no secrets in git history; HTML-escaped all user-controlled

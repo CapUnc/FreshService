@@ -24,6 +24,24 @@ A powerful semantic search tool for Freshservice tickets that enables IT help de
 Freshservice tenant with `python freshservice.py`; statistics will then reflect
 your own data. Check live counts any time with `python start_app.py --diagnostics-only`.
 
+## 🏗️ How It Works
+
+```mermaid
+flowchart LR
+    FS[Freshservice API] -->|ingest closed incidents| ING[freshservice.py]
+    ING -->|clean + embed| CH[(ChromaDB&#10;vector store)]
+    Q[User query / ticket id] --> APP[Streamlit app.py]
+    APP -->|semantic search| CH
+    CH -->|candidates| RANK[rerank + bucket]
+    RANK --> APP
+    APP -->|similar-ticket notes| AI[OpenAI&#10;guidance + summaries]
+    AI --> APP
+```
+
+1. **Ingest** — `freshservice.py` pulls closed incidents, cleans them, and stores OpenAI embeddings in ChromaDB.
+2. **Search** — `app.py` embeds the query/seed ticket, retrieves nearest tickets, then reranks and buckets them by relevance.
+3. **Guide** — on demand, the selected OpenAI model analyzes the similar tickets' notes to recommend next steps, category, and assignment group.
+
 ## 🛠️ Installation
 
 ### Prerequisites

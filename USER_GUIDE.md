@@ -1,4 +1,4 @@
-# Nexus v2.0 - User Guide
+# Nexus — User Guide
 
 ## Quick Start
 

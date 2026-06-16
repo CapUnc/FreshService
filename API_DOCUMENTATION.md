@@ -1,4 +1,4 @@
-# Nexus v2.1 - API Documentation
+# Nexus — API Documentation
 
 ## Overview
 
@@ -534,7 +534,7 @@ streamlit run app.py --server.port 8501
 
 ### Search Performance
 - **Average Query Time**: <1 second
-- **Database Size**: 93MB (3,660 tickets)
+- **Database Size**: scales with ingested tickets (~25 KB per ticket)
 - **Memory Usage**: ~200MB during operation
 - **Concurrent Users**: Supports multiple simultaneous searches
 
@@ -599,5 +599,5 @@ def handle_new_ticket(ticket_data):
 
 ---
 
-**Last Updated**: January 2025  
-**Version**: 1.0.0
+**Last Updated**: June 2026  
+**Version**: 3.0.0 (Nexus)

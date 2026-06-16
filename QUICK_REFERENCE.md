@@ -111,10 +111,8 @@ The **✨ Generate Guidance** button in the Streamlit app provides intelligent r
 
 ## 📊 Current Database Stats
 
-- **Total Tickets**: 3,947 closed incidents (after 2025-10-29 ingestion)
-- **Range**: Ticket IDs 11 - 6501
-- **Top Categories**: Software/Applications (1,503), Hardware (569), Microsoft Office 365 (408)
-- **Top Subcategories**: Revit (367), Bluebeam (227), Teams (129), Enscape (95)
+Counts reflect whatever you have ingested. Check live numbers with:
+`python start_app.py --diagnostics-only`.
 
 ## 🛠️ Configuration Files
 
@@ -285,6 +283,6 @@ streamlit run app.py --server.port 8501
 
 ---
 
-**Last Updated**: January 2025  
-**Version**: 1.0.0  
-**Status**: Production Ready ✅
+**Last Updated**: June 2026  
+**Version**: 3.0.0 (Nexus)  
+**Status**: Active — see `AUDIT_PLAN.md`
