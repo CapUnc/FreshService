@@ -1,6 +1,6 @@
 # =========================
 # File: debug_utils.py
-# Debug utilities and error handling for Freshservice Semantic Search
+# Debug utilities and error handling for Nexus
 # =========================
 
 import os
@@ -118,7 +118,7 @@ class SystemDiagnostics:
             load_dotenv('api.env') or load_dotenv()
             
             db_path = os.getenv('CHROMA_DB_PATH', './chroma_db')
-            collection_name = os.getenv('CHROMA_COLLECTION_NAME', 'FreshService')
+            collection_name = os.getenv('CHROMA_COLLECTION_NAME', 'nexus_tickets')
             
             results['database_path'] = db_path
             

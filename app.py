@@ -49,7 +49,7 @@ except Exception as e:
 # --------------------------------
 # Page config & lightweight styles
 # --------------------------------
-st.set_page_config(page_title="Freshservice Semantic Search", layout="wide")
+st.set_page_config(page_title="Nexus", layout="wide")
 
 # --------------------------------
 # Session management (cached for reuse)

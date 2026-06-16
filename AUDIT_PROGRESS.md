@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Checkpoints A + C done. Next: Checkpoint B (Nexus rebrand + config unification).**
+## Current status: **Checkpoints A, C, B done. Next: Checkpoint D (correctness: `st.experimental_rerun` → `st.rerun`, etc.).**
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -33,10 +33,13 @@
   - [x] Wiped `chroma_db/` (user-authorized)
   - [x] Smoke-test: all modules compile + import; offline tests run (see Findings #1)
   - [x] Commit A
-- ⬜ **B — Nexus rebrand + config unification**
-  - [ ] Rename app title / docs / log file names to Nexus
-  - [ ] Unify Chroma collection default (`config.py` `freshservice_core` → `nexus_tickets`); align `debug_utils.py`
-  - [ ] Fix doc factual drift (ticket counts, version/date, file references)
+- ✅ **B — Nexus rebrand + config unification** (done — committed)
+  - [x] Rebranded "Freshservice Semantic Search" → "Nexus" across code (`app.py` page title, `start_app.py` banners, `debug_utils.py`) and all user docs. (Kept "Freshservice" where it means the actual product/API. `AUDIT_PLAN.md` intentionally retains the old name as it documents the inconsistency.)
+  - [x] Unified Chroma collection default → `nexus_tickets` in `config.py` and `debug_utils.py` (matches `api.env.example`)
+  - [x] Fixed README factual drift: removed stale ticket stats (3,660), `ticket_images/`, `January 2025`/`v2.1.0`; documented model picker + `OPENAI_AVAILABLE_MODELS`; corrected file/structure refs
+  - [ ] **Deferred to H:** deep rewrite of USER_GUIDE / QUICK_REFERENCE / TROUBLESHOOTING / API_DOCUMENTATION (only titles rebranded so far; stats/examples there still need updating) + architecture diagram
+  - [ ] **Deferred (low pri):** rename `freshservice_debug.log` file (gitignored; written by `debug_utils.py` + `ai_recommendations.py`)
+  - [ ] **User action:** when re-syncing, set `CHROMA_COLLECTION_NAME=nexus_tickets` in your `api.env` (or remove the override to use the new default). I did not edit your real `api.env`.
 - ✅ **C — OpenAI 1.x migration + model picker** (done — committed)
   - [x] Pin `openai>=1.50,<2` (NOT 2.x: chromadb 0.4.22's embedding fn only detects the `1.x` client via `version.startswith("1.")`; under 2.x it falls back to the removed `openai.Embedding` and ingestion would crash). Installed 1.109.1.
   - [x] Migrated `ai_recommendations.py`, `ai_summarizer.py`, `debug_utils.py` to the modern `OpenAI()` client (`chat.completions.create` / `embeddings.create`, `.message.content`)
@@ -65,6 +68,9 @@
      do not weaken assertions blindly. The 3 tests in `test_relevance_filters.py` pass.
 
 ## Changelog (most recent first)
+- _Checkpoint B_: rebranded the project to **Nexus** across code + docs; unified the Chroma
+  collection default to `nexus_tickets`; fixed README factual drift (stale stats, dead file
+  refs, version/date) and documented the model picker.
 - _Checkpoint C_: migrated to modern OpenAI SDK (`openai>=1.50,<2`, installed 1.109.1) across
   `ai_recommendations`, `ai_summarizer`, `debug_utils`; added shared `openai_client()` +
   `available_models()` in config; added in-app model picker wired into guidance + summaries;

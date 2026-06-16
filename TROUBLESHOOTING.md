@@ -1,6 +1,6 @@
 # 🔧 Troubleshooting Guide
 
-This guide helps you resolve common issues with the Freshservice Semantic Search system.
+This guide helps you resolve common issues with the Nexus system.
 
 ## 🚀 Quick Start
 

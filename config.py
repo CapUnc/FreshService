@@ -75,7 +75,7 @@ OPENAI_AVAILABLE_MODELS = _getenv("OPENAI_AVAILABLE_MODELS", "").strip()
 # Chroma config
 # ---------------------------------------
 CHROMA_DB_PATH = _getenv("CHROMA_DB_PATH", "./chroma_db").strip().strip('"')
-CHROMA_COLLECTION_NAME = _getenv("CHROMA_COLLECTION_NAME", "freshservice_core").strip()
+CHROMA_COLLECTION_NAME = _getenv("CHROMA_COLLECTION_NAME", "nexus_tickets").strip()
 
 
 # ---------------------------------------

@@ -1,4 +1,4 @@
-# Freshservice Semantic Search - Quick Reference
+# Nexus - Quick Reference
 
 ## 🚀 Quick Start Commands
 

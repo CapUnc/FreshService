@@ -1,8 +1,8 @@
-# Freshservice Semantic Search v2.1 - API Documentation
+# Nexus v2.1 - API Documentation
 
 ## Overview
 
-This document provides detailed API documentation for the Freshservice Semantic Search system, including configuration options, search parameters, AI enhancement features, and integration details.
+This document provides detailed API documentation for the Nexus system, including configuration options, search parameters, AI enhancement features, and integration details.
 
 ## Configuration API
 

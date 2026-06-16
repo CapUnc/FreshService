@@ -1,4 +1,4 @@
-# 🔎 Freshservice Semantic Search
+# 🔎 Nexus
 
 A powerful semantic search tool for Freshservice tickets that enables IT help desk teams to quickly find relevant historical incidents and solutions using AI-enhanced natural language queries and ticket-based seeding.
 
@@ -13,19 +13,16 @@ A powerful semantic search tool for Freshservice tickets that enables IT help de
 - **Web UI**: Streamlit-based interface with debug mode and AI toggles
 - **📋 Unassigned Tickets Dashboard**: View and manage all unassigned, open tickets with quick actions to open or search for similar tickets
 - **✨ On-Demand AI Guidance**: Intelligent recommendations analyzing all notes from similar tickets, suggesting questions, referencing external knowledge bases, and providing context-aware solutions
+- **🧠 Model Picker**: Choose the OpenAI model for AI guidance and summaries from the sidebar
 - **CLI Interface**: Command-line tool for power users
 - **🔧 Error Handling**: Comprehensive diagnostics and troubleshooting tools
 - **Smart Startup**: Automated system validation and health checks
 
 ## 📊 Current Status
 
-✅ **Fully Operational** - 3,660 closed incident tickets indexed and searchable
-
-### Database Statistics
-- **Total Tickets**: 3,660 closed incidents
-- **Ticket Range**: 11 - 6501
-- **Top Categories**: Software/Applications (1,503), Hardware (569), Microsoft Office 365 (408)
-- **Top Subcategories**: Revit (367), Bluebeam (227), Teams (129), Enscape (95)
+⚙️ **Ready to ingest.** The vector store ships empty. Populate it from your
+Freshservice tenant with `python freshservice.py`; statistics will then reflect
+your own data. Check live counts any time with `python start_app.py --diagnostics-only`.
 
 ## 🛠️ Installation
 
@@ -103,10 +100,11 @@ python start_app.py --diagnostics-only
 - `OPENAI_EMBEDDING_MODEL`: Embedding model (default: `text-embedding-3-small`)
 - `OPENAI_GUIDANCE_MODEL`: Model used for AI guidance (default: `gpt-4o-mini`)
 - `OPENAI_SUMMARIZER_MODEL`: Model used for ticket summaries & query expansion (defaults to `OPENAI_GUIDANCE_MODEL`)
+- `OPENAI_AVAILABLE_MODELS`: Comma-separated models offered in the in-app model picker (uses a sensible default list when unset)
 
 #### ChromaDB Configuration
 - `CHROMA_DB_PATH`: Database path (default: `./chroma_db`)
-- `CHROMA_COLLECTION_NAME`: Collection name (default: `FreshService`)
+- `CHROMA_COLLECTION_NAME`: Collection name (default: `nexus_tickets`)
 - `CHROMA_TELEMETRY_IMPLEMENTATION`: Set to `disabled` to silence PostHog telemetry warnings
 
 #### Search Configuration
@@ -308,10 +306,10 @@ pip install chromadb==0.4.22
 - **Fallback Safety**: Graceful degradation to raw text if AI fails
 
 #### Database Size
-- Current: 3,660 tickets (~93MB)
+- Scales with ingested tickets (~25 KB/ticket on disk)
 - Search time: <1 second for most queries
 - Memory usage: ~200MB during operation
-- AI costs: depends on `OPENAI_SUMMARIZER_MODEL`/`OPENAI_GUIDANCE_MODEL` (≈$0.003 per guidance call with `gpt-4o-mini`)
+- AI costs: depend on the selected model (≈$0.003 per guidance call with `gpt-4o-mini`)
 
 #### Rate Limiting
 - Freshservice: 100 requests/minute (configurable)
@@ -349,10 +347,9 @@ FreshService/
 │   ├── test_search_intent.py
 │   ├── test_relevance_filters.py
 │   └── test_ai_summarizer.py
-├── requirements.txt          # Python dependencies
-├── api.env                   # Environment configuration
-├── chroma_db/                # ChromaDB storage
-└── ticket_images/            # Screenshot storage
+├── requirements.txt          # Python dependencies (+ requirements-dev.txt, requirements.lock.txt)
+├── api.env.example           # Environment template (copy to api.env)
+└── chroma_db/                # ChromaDB storage (git-ignored)
 ```
 
 ## 🤝 Contributing
@@ -376,6 +373,6 @@ For technical support or questions:
 
 ---
 
-**Last Updated**: January 2025  
-**Version**: 2.1.0  
-**Status**: Production Ready with AI Enhancement & Performance Optimizations ✅
+**Last Updated**: June 2026  
+**Version**: 3.0.0 (Nexus)  
+**Status**: Active — modern OpenAI SDK + in-app model picker; audit in progress (see `AUDIT_PLAN.md`)

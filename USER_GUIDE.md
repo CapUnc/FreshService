@@ -1,4 +1,4 @@
-# Freshservice Semantic Search v2.0 - User Guide
+# Nexus v2.0 - User Guide
 
 ## Quick Start
 

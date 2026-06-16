@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Startup script for Freshservice Semantic Search with comprehensive diagnostics.
+Startup script for Nexus with comprehensive diagnostics.
 """
 
 import sys
@@ -153,7 +153,7 @@ def start_streamlit(port=8501, host="localhost"):
 
 def main():
     """Main startup function."""
-    parser = argparse.ArgumentParser(description="Start Freshservice Semantic Search")
+    parser = argparse.ArgumentParser(description="Start Nexus")
     parser.add_argument("--port", type=int, default=8501, help="Port for Streamlit app")
     parser.add_argument("--host", default="localhost", help="Host for Streamlit app")
     parser.add_argument("--skip-checks", action="store_true", help="Skip system checks")
@@ -161,7 +161,7 @@ def main():
     
     args = parser.parse_args()
     
-    print("🔎 Freshservice Semantic Search - Startup Check")
+    print("🔎 Nexus - Startup Check")
     print("=" * 50)
     
     if not args.skip_checks:
