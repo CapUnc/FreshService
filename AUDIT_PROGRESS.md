@@ -19,7 +19,7 @@
 
 ---
 
-## Current status: **Checkpoints A, C, B done. Next: Checkpoint D (correctness: `st.experimental_rerun` → `st.rerun`, etc.).**
+## Current status: **Done so far: A, C, B, D(partial), G(partial).** Remaining: D (error paths, agent N+1), E (efficiency), F (security/XSS), G-CI, H (deep docs + diagram).
 
 ### ✅ / ⬜ Checkpoints
 - 🔄 **A — Foundations** (in progress)
@@ -54,7 +54,13 @@
   - [ ] Ticket-update field-name verification
 - ⬜ **E — Efficiency** (Phase 5): shared session/client reuse, faster reingest
 - ⬜ **F — Security** (Phase 6): HTML/XSS escaping, secret-history scan
-- ⬜ **G — Tests/CI** (Phase 7a): mock external calls, expand coverage, CI
+- 🔄 **G — Tests/CI** (Phase 7a)
+  - [x] Fixed the 2 stale tests in `test_search_intent.py` (resolves Finding #1)
+  - [x] Converted `test_ai_summarizer.py` to a mocked unit test (no live API, real assertions)
+  - [x] Added `tests/test_text_cleaning.py` + `tests/test_config.py`
+  - [x] Added `pytest.ini`; suite now **19 passing, fully offline**
+  - [ ] CI (GitHub Actions: install pinned deps → ruff → pytest) — pending
+  - [ ] Further coverage: `freshservice.sanitize_metadata`, `search_tickets` rerank/bucket, `agent_resolver` payload parsing
 - ⬜ **H — Docs overhaul** (Phase 7b): consolidate + rewrite to match reality, architecture diagram
 
 ---
@@ -70,8 +76,15 @@
    → **Decision needed in Checkpoint G:** are these wrong tests (fix the assertions) or a missing
      feature (derive category from free-text query against the taxonomy)? Treat as test/impl drift;
      do not weaken assertions blindly. The 3 tests in `test_relevance_filters.py` pass.
+   → **RESOLVED in Checkpoint G:** these were genuinely wrong tests (not a missing feature):
+     `"access"` is an intentional stopword, and `category_match` is a seed-ticket feature.
+     Fixed the assertions accordingly (assert a real keyword; provide seed metadata).
 
 ## Changelog (most recent first)
+- _Checkpoint G (partial)_: made the test suite trustworthy — fixed 2 stale tests, mocked the
+  live-API summarizer test, added `text_cleaning` + `config` tests and `pytest.ini`. Suite is
+  now 19 passing and fully offline (was: pytest not installed, 2 silently failing).
+- _Checkpoint D (partial)_: replaced deprecated `st.experimental_rerun()` with `st.rerun()`.
 - _Checkpoint B_: rebranded the project to **Nexus** across code + docs; unified the Chroma
   collection default to `nexus_tickets`; fixed README factual drift (stale stats, dead file
   refs, version/date) and documented the model picker.
