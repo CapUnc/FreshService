@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -66,13 +67,15 @@ OPENAI_API_KEY = _getenv("OPENAI_API_KEY", required=True).strip()
 OPENAI_EMBEDDING_MODEL = _getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small").strip()
 OPENAI_GUIDANCE_MODEL = _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini").strip()
 OPENAI_SUMMARIZER_MODEL = _getenv("OPENAI_SUMMARIZER_MODEL", _getenv("OPENAI_GUIDANCE_MODEL", "gpt-4o-mini")).strip()
+# Comma-separated list of models offered in the in-app picker (blank => sensible default).
+OPENAI_AVAILABLE_MODELS = _getenv("OPENAI_AVAILABLE_MODELS", "").strip()
 
 
 # ---------------------------------------
 # Chroma config
 # ---------------------------------------
 CHROMA_DB_PATH = _getenv("CHROMA_DB_PATH", "./chroma_db").strip().strip('"')
-CHROMA_COLLECTION_NAME = _getenv("CHROMA_COLLECTION_NAME", "freshservice_core").strip()
+CHROMA_COLLECTION_NAME = _getenv("CHROMA_COLLECTION_NAME", "nexus_tickets").strip()
 
 
 # ---------------------------------------
@@ -99,6 +102,18 @@ def freshservice_session() -> Session:
     return s
 
 
+@lru_cache(maxsize=1)
+def shared_freshservice_session() -> Session:
+    """Process-wide reusable Freshservice session.
+
+    Reuses one connection pool (HTTP keep-alive) across the many small
+    ticket/agent/group lookups performed during search and ingestion. requests'
+    underlying urllib3 pool is thread-safe, so this is safe to share across the
+    context-fetch thread pool in search_context.
+    """
+    return freshservice_session()
+
+
 def embedding_function() -> OpenAIEmbeddingFunction:
     """
     Embedding function for Chroma collections.
@@ -107,9 +122,41 @@ def embedding_function() -> OpenAIEmbeddingFunction:
     return OpenAIEmbeddingFunction(api_key=OPENAI_API_KEY, model_name=OPENAI_EMBEDDING_MODEL)
 
 
+@lru_cache(maxsize=1)
+def openai_client():
+    """Return a shared OpenAI client (modern >=1.x SDK), created once and reused."""
+    from openai import OpenAI
+
+    return OpenAI(api_key=OPENAI_API_KEY)
+
+
+def available_models() -> list[str]:
+    """Models offered in the in-app picker.
+
+    Sourced from the comma-separated OPENAI_AVAILABLE_MODELS env var, or a sensible
+    default list. The configured guidance model is always included and listed first.
+    """
+    if OPENAI_AVAILABLE_MODELS:
+        models = [m.strip() for m in OPENAI_AVAILABLE_MODELS.split(",") if m.strip()]
+    else:
+        models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"]
+
+    ordered = [OPENAI_GUIDANCE_MODEL, *models]
+    seen: set[str] = set()
+    unique: list[str] = []
+    for name in ordered:
+        if name and name not in seen:
+            seen.add(name)
+            unique.append(name)
+    return unique
+
+
+@lru_cache(maxsize=4)
 def chroma_collection(name: Optional[str] = None):
     """
     Return a persistent Chroma collection at CHROMA_DB_PATH.
+    Cached per name so the client + embedding function are built once and reused
+    across searches (previously rebuilt on every query).
     If it doesn't exist yet, create it with the configured embedding function.
     """
     import logging

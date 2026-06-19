@@ -8,9 +8,7 @@ import logging
 from dataclasses import dataclass
 from typing import List, Sequence
 
-import openai
-
-from config import OPENAI_API_KEY, OPENAI_GUIDANCE_MODEL
+from config import OPENAI_API_KEY, OPENAI_GUIDANCE_MODEL, openai_client
 from search_context import TicketContext
 from improved_ai_prompt import (
     create_ai_guidance_prompt_with_sources,
@@ -132,10 +130,10 @@ def generate_guidance(
 
     # Debug logging for prompt verification handled by prompt_logger above.
 
-    openai.api_key = OPENAI_API_KEY
-    
+    client = openai_client()
+
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temperature,
@@ -144,7 +142,7 @@ def generate_guidance(
         logger.error("OpenAI guidance call failed: %s", exc)
         raise
 
-    content = response.choices[0].message["content"].strip()
+    content = (response.choices[0].message.content or "").strip()
     parsed = None
     if content:
         try:

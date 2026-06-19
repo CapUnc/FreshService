@@ -7,7 +7,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable, Optional, Set, Tuple
+from typing import Iterable, Optional, Set
 
 
 # Minimal stopword list tailored for ticket phrasing

@@ -10,7 +10,7 @@ from functools import lru_cache
 from typing import Optional
 
 from config import (
-    freshservice_session,
+    shared_freshservice_session,
     FRESHSERVICE_BASE_URL,
     REQUEST_TIMEOUT,
     RATE_LIMIT_SLEEP,
@@ -72,7 +72,7 @@ def get_agent_name(agent_id: Optional[int]) -> str:
         except (ValueError, TypeError):
             return "Unassigned"
     
-    session = freshservice_session()
+    session = shared_freshservice_session()
     url = f"{FRESHSERVICE_BASE_URL}/agents/{agent_id}"
     attempts = 3
     
@@ -120,7 +120,7 @@ def get_group_name(group_id: Optional[int]) -> str:
         except (ValueError, TypeError):
             return "Unknown"
     
-    session = freshservice_session()
+    session = shared_freshservice_session()
     url = f"{FRESHSERVICE_BASE_URL}/groups/{group_id}"
     attempts = 3
     

@@ -81,14 +81,6 @@ def _fetch_all_tickets(session, *, updated_since: Optional[str] = None) -> List[
     return tickets
 
 
-def _exists(coll, ticket_id: int) -> bool:
-    try:
-        res = coll.get(ids=[str(ticket_id)])
-        return bool(res.get("ids"))
-    except Exception:
-        return False
-
-
 # ---------------------------
 # Metadata sanitation (Chroma demands primitives; no None)
 # ---------------------------
@@ -145,6 +137,12 @@ def main(*, updated_since: Optional[str] = None) -> None:
     total = added = duplicates = 0
     filtered_status = filtered_type = 0
 
+    # Pre-fetch existing ids once instead of one DB round-trip per ticket.
+    try:
+        existing_ids = set(coll.get(include=[]).get("ids") or [])
+    except Exception:
+        existing_ids = set()
+
     tickets = _fetch_all_tickets(session, updated_since=updated_since)
     for t in tickets:
         total += 1
@@ -164,7 +162,7 @@ def main(*, updated_since: Optional[str] = None) -> None:
             continue
 
         tid = int(t["id"])
-        if _exists(coll, tid):
+        if str(tid) in existing_ids:
             duplicates += 1
             logging.info(f"[skip] ticket={tid} already embedded")
             continue
@@ -218,6 +216,7 @@ def main(*, updated_since: Optional[str] = None) -> None:
         try:
             coll.add(documents=[emb_text], metadatas=[metadata], ids=[str(tid)])
             added += 1
+            existing_ids.add(str(tid))
             logging.info(f"[ok]   embedded ticket={tid} chars={len(emb_text)}")
         except Exception as e:
             bad_keys = [k for k, v in metadata.items() if not isinstance(v, _ALLOWED)]

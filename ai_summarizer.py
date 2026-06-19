@@ -6,17 +6,13 @@
 import logging
 from functools import lru_cache
 from typing import Optional
-from dotenv import load_dotenv
 
 from improved_ai_prompt import (
     create_enhanced_system_message,
     create_enhanced_ticket_summary_prompt,
 )
-
-# Load environment early so config sees env vars
-load_dotenv('api.env') or load_dotenv()
-
-from config import OPENAI_API_KEY, OPENAI_SUMMARIZER_MODEL
+# config loads api.env on import, so env vars are available below.
+from config import OPENAI_SUMMARIZER_MODEL, openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +26,12 @@ def _cached_ticket_summary(
     ticket_id: Optional[int],
     model: str,
 ) -> str:
-    import openai
-
-    openai.api_key = OPENAI_API_KEY
+    client = openai_client()
 
     system_message = create_enhanced_system_message()
     prompt = create_enhanced_ticket_summary_prompt(subject, description, ticket_id=ticket_id)
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system_message},
@@ -47,7 +41,7 @@ def _cached_ticket_summary(
         temperature=0.3,
     )
 
-    summary = response.choices[0].message.content.strip()
+    summary = (response.choices[0].message.content or "").strip()
 
     if ticket_id:
         summary = f"[Ticket {ticket_id}] {summary}"

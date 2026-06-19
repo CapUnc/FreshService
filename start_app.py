@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Startup script for Freshservice Semantic Search with comprehensive diagnostics.
+Startup script for Nexus with comprehensive diagnostics.
 """
 
 import sys
 import os
 import subprocess
 import argparse
-from pathlib import Path
 
 def check_python_version():
     """Check if Python version is compatible."""
@@ -50,7 +49,7 @@ def check_dependencies():
             missing_packages.append(package_name)
     
     if missing_packages:
-        print(f"\n📦 Install missing packages:")
+        print("\n📦 Install missing packages:")
         print(f"   pip install {' '.join(missing_packages)}")
         return False
     
@@ -153,7 +152,7 @@ def start_streamlit(port=8501, host="localhost"):
 
 def main():
     """Main startup function."""
-    parser = argparse.ArgumentParser(description="Start Freshservice Semantic Search")
+    parser = argparse.ArgumentParser(description="Start Nexus")
     parser.add_argument("--port", type=int, default=8501, help="Port for Streamlit app")
     parser.add_argument("--host", default="localhost", help="Host for Streamlit app")
     parser.add_argument("--skip-checks", action="store_true", help="Skip system checks")
@@ -161,7 +160,7 @@ def main():
     
     args = parser.parse_args()
     
-    print("🔎 Freshservice Semantic Search - Startup Check")
+    print("🔎 Nexus - Startup Check")
     print("=" * 50)
     
     if not args.skip_checks:
@@ -204,7 +203,7 @@ def main():
         return 0
     
     # Start the application
-    print(f"\n✅ All checks passed! Starting application...")
+    print("\n✅ All checks passed! Starting application...")
     
     if not start_streamlit(args.port, args.host):
         return 1

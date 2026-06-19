@@ -1,13 +1,13 @@
 # =========================
 # File: debug_utils.py
-# Debug utilities and error handling for Freshservice Semantic Search
+# Debug utilities and error handling for Nexus
 # =========================
 
 import os
 import sys
 import traceback
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 
 import streamlit as st
@@ -118,7 +118,7 @@ class SystemDiagnostics:
             load_dotenv('api.env') or load_dotenv()
             
             db_path = os.getenv('CHROMA_DB_PATH', './chroma_db')
-            collection_name = os.getenv('CHROMA_COLLECTION_NAME', 'FreshService')
+            collection_name = os.getenv('CHROMA_COLLECTION_NAME', 'nexus_tickets')
             
             results['database_path'] = db_path
             
@@ -162,24 +162,22 @@ class SystemDiagnostics:
         }
         
         try:
-            import openai
+            from openai import OpenAI
             from dotenv import load_dotenv
-            
+
             # Load environment
             load_dotenv('api.env') or load_dotenv()
-            
+
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
                 error_msg = "OpenAI API key not found"
                 self.errors.append(error_msg)
                 results['errors'].append(error_msg)
                 return results
-            
-            # Test API key
-            openai.api_key = api_key
-            
-            # Simple test call
-            response = openai.Embedding.create(
+
+            # Test the key with a minimal embeddings call (modern >=1.x SDK)
+            client = OpenAI(api_key=api_key)
+            client.embeddings.create(
                 input="test",
                 model="text-embedding-3-small"
             )
@@ -227,49 +225,6 @@ class SystemDiagnostics:
             logger.info("System diagnostics passed - all components healthy")
         
         return diagnostics
-
-def safe_import(module_name: str, description: str = None) -> Optional[Any]:
-    """Safely import a module with error handling."""
-    try:
-        return __import__(module_name)
-    except ImportError as e:
-        error_msg = f"Failed to import {module_name}: {str(e)}"
-        if description:
-            error_msg += f" (Required for: {description})"
-        logger.error(error_msg)
-        return None
-    except Exception as e:
-        error_msg = f"Unexpected error importing {module_name}: {str(e)}"
-        logger.error(error_msg)
-        return None
-
-def handle_streamlit_error(func):
-    """Decorator for handling errors in Streamlit functions."""
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            error_details = {
-                'function': func.__name__,
-                'error': str(e),
-                'traceback': traceback.format_exc(),
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            logger.error(f"Streamlit error in {func.__name__}: {str(e)}")
-            logger.error(traceback.format_exc())
-            
-            # Display user-friendly error in Streamlit
-            st.error(f"❌ Error in {func.__name__}: {str(e)}")
-            
-            # Show debug info if in debug mode
-            if st.session_state.get('debug_mode', False):
-                with st.expander("🔧 Debug Information"):
-                    st.json(error_details)
-                    st.code(traceback.format_exc())
-            
-            return None
-    return wrapper
 
 def display_system_status():
     """Display system status in Streamlit."""

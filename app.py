@@ -3,6 +3,7 @@
 # =========================
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -27,6 +28,7 @@ try:
         REQUEST_TIMEOUT,
         FRESHSERVICE_BASE_URL,
         RATE_LIMIT_SLEEP,
+        available_models,
         freshservice_session,
         get_ticket_url,
     )
@@ -37,13 +39,9 @@ try:
     )
     from search_intent import extract_query_intent
     from search_context import gather_ticket_contexts, load_category_tree, TicketContext
-    from ai_recommendations import AIGuidance, generate_guidance
-    from debug_utils import (
-        SystemDiagnostics,
-        handle_streamlit_error,
-        display_system_status,
-        safe_import
-    )
+    from ai_recommendations import generate_guidance
+    from debug_utils import display_system_status
+    from text_cleaning import sanitize_html
     IMPORTS_SUCCESSFUL = True
 except Exception as e:
     logger.error(f"Import error: {e}")
@@ -53,7 +51,7 @@ except Exception as e:
 # --------------------------------
 # Page config & lightweight styles
 # --------------------------------
-st.set_page_config(page_title="Freshservice Semantic Search", layout="wide")
+st.set_page_config(page_title="Nexus", layout="wide")
 
 # --------------------------------
 # Session management (cached for reuse)
@@ -160,6 +158,17 @@ if 'debug_mode' not in st.session_state:
 # ----------------------------
 # Helpers
 # ----------------------------
+def _esc(value: Any) -> str:
+    """HTML-escape a value before interpolating it into unsafe_allow_html markup.
+
+    Ticket fields (subject, category, group, description preview) and query tokens
+    are user-controlled, so they must be escaped to prevent HTML/script injection.
+    """
+    if value is None:
+        return ""
+    return html.escape(str(value), quote=True)
+
+
 def _ticket_url(tid: Optional[int]) -> Optional[str]:
     if not tid:
         return None
@@ -332,7 +341,7 @@ def _render_unassigned_ticket_row(ticket: Dict[str, Any]) -> None:
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             if ticket_url:
-                st.markdown(f'<a href="{ticket_url}" target="_blank" style="text-decoration: none; font-size: 0.9em;">🔗</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="{_esc(ticket_url)}" target="_blank" style="text-decoration: none; font-size: 0.9em;">🔗</a>', unsafe_allow_html=True)
         with btn_col2:
             if st.button("🔍", key=f"search_{ticket_id}", use_container_width=True, help="Search similar tickets"):
                 st.session_state["query"] = str(ticket_id)
@@ -564,7 +573,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             line1_cols = st.columns([1, 7, 1, 0.5])
             
             with line1_cols[0]:
-                st.markdown(f"<div class='compact-ticket'>#{ticket_display}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-ticket'>#{_esc(ticket_display)}</div>", unsafe_allow_html=True)
             
             with line1_cols[1]:
                 if url:
@@ -616,7 +625,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             line1_cols = st.columns([1, 7, 1, 0.5])
             
             with line1_cols[0]:
-                st.markdown(f"<div class='compact-ticket'>#{ticket_display}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-ticket'>#{_esc(ticket_display)}</div>", unsafe_allow_html=True)
             
             with line1_cols[1]:
                 if url:
@@ -635,7 +644,7 @@ def _render_card(doc: str, m: dict, dist: float, show_desc_default: bool = False
             # Line 2: AI summary (compact preview) - no space above
             preview = _extract_preview_text(doc, subject, limit=100)
             if preview:
-                st.markdown(f"<div class='compact-summary-tight'>{preview}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='compact-summary-tight'>{_esc(preview)}</div>", unsafe_allow_html=True)
 
 
 def _extract_preview_text(doc: str, subject: str, limit: int = 100) -> str:
@@ -1032,8 +1041,6 @@ def _process_pending_guidance_action(seed_tid: Optional[int]) -> None:
     st.session_state['guidance_refresh_requested'] = True
     st.session_state['guidance_panel_open'] = True
 
-    category_payload = pending.get('category_payload') or {}
-
     with st.spinner(f"Updating ticket #{ticket_id}..."):
         _update_ticket_fields(ticket_id, **update_kwargs)
 
@@ -1138,11 +1145,11 @@ def _render_empty_state(require_token: bool, require_category: bool) -> None:
     if require_token:
         if cols[0].button("Allow other software terms"):
             st.session_state["require_token"] = False
-            st.experimental_rerun()
+            st.rerun()
     if require_category:
         if cols[1].button("Allow other categories"):
             st.session_state["require_category"] = False
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ----------------------------
@@ -1176,6 +1183,15 @@ with st.sidebar:
         value=st.session_state.get("ai_summary", True),
         help="Use AI to create optimized summaries for better semantic matching with closed tickets. Disable for faster searches.",
         key="ai_summary"
+    )
+
+    model_options = available_models()
+    selected_model = st.selectbox(
+        "🧠 AI model",
+        options=model_options,
+        index=0,
+        help="OpenAI model used for AI guidance and ticket summaries.",
+        key="ai_model",
     )
 
     require_token_match = st.checkbox(
@@ -1238,9 +1254,10 @@ if seed_tid:
     try:
         with st.spinner(f"Fetching ticket {seed_tid}..."):
             seed_text, seed_meta = build_seed_text_from_ticket(
-                seed_tid, 
+                seed_tid,
                 clean=clean_seed,
-                use_ai_summary=use_ai_summary
+                use_ai_summary=use_ai_summary,
+                summary_model=selected_model,
             )
         query_text = seed_text
     except Exception as e:
@@ -1267,7 +1284,7 @@ if seed_meta:
             st.write(f"**Subject:** {seed_meta['subject'] or '—'}")
             st.caption("Original Freshservice description:")
             if seed_meta.get("description_html"):
-                st.markdown(seed_meta.get("description_html") or "—", unsafe_allow_html=True)
+                st.markdown(sanitize_html(seed_meta.get("description_html")) or "—", unsafe_allow_html=True)
             else:
                 st.write(seed_meta.get("description_raw") or "—")
 
@@ -1289,6 +1306,7 @@ if st.session_state.get('guidance_refresh_requested'):
             seed_tid,
             clean=clean_seed,
             use_ai_summary=use_ai_summary,
+            summary_model=selected_model,
         ) if seed_tid else (None, None)
     except Exception as refresh_err:
         logger.warning('Failed to refresh seed ticket after update: %s', refresh_err)
@@ -1318,7 +1336,7 @@ try:
     with token_chip_container:
         if intent.tokens:
             chips = "".join(
-                f"<span class='chip chip-good'>{token}</span>" for token in sorted(intent.tokens)
+                f"<span class='chip chip-good'>{_esc(token)}</span>" for token in sorted(intent.tokens)
             )
             st.markdown(f"**Detected tokens:**<br>{chips}", unsafe_allow_html=True)
         elif require_token_match:
@@ -1447,6 +1465,7 @@ if run_guidance:
                 similar_contexts=similar_contexts,
                 categories_tree=categories_tree,
                 detected_tokens=intent.tokens,
+                model=selected_model,
             )
             st.session_state["ai_guidance"] = {
                 "key": guidance_key,

@@ -1,6 +1,6 @@
 # 🔧 Troubleshooting Guide
 
-This guide helps you resolve common issues with the Freshservice Semantic Search system.
+This guide helps you resolve common issues with the Nexus system.
 
 ## 🚀 Quick Start
 
@@ -63,12 +63,12 @@ echo "OPENAI_API_KEY=sk-your-valid-key-here" >> api.env
 3. Test the key:
 ```bash
 python -c "
-import openai
 import os
+from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv('api.env')
-openai.api_key = os.getenv('OPENAI_API_KEY')
-response = openai.Embedding.create(input='test', model='text-embedding-3-small')
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+client.embeddings.create(input='test', model='text-embedding-3-small')
 print('✅ API key is valid')
 "
 ```
@@ -243,13 +243,13 @@ print('Freshservice API:', response.status_code)
 
 # Test OpenAI API
 python -c "
-import openai
 import os
+from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv('api.env')
 
-openai.api_key = os.getenv('OPENAI_API_KEY')
-response = openai.Embedding.create(input='test', model='text-embedding-3-small')
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+client.embeddings.create(input='test', model='text-embedding-3-small')
 print('OpenAI API: Working')
 "
 ```
