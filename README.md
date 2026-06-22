@@ -2,6 +2,8 @@
 
 A powerful semantic search tool for Freshservice tickets that enables IT help desk teams to quickly find relevant historical incidents and solutions using AI-enhanced natural language queries and ticket-based seeding.
 
+> 🤖 **Picking this up (human or AI agent)?** Read [`STARTER.md`](STARTER.md) first — it covers the current state, the in-progress **Zendesk** migration, the PII + data-quality constraints, and the recommended next step.
+
 ## 🚀 Features
 
 - **🤖 AI-Enhanced Search**: AI-powered summarization for better semantic matching

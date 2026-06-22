@@ -69,3 +69,10 @@ tmp/
 
 # Streamlit
 .streamlit/
+
+# Ticket-data exports (contain PII — never commit)
+*-one-time-export-*/
+zendesksupport-*/
+zendesktalk-*/
+ruff_cache/
+.ruff_cache/
